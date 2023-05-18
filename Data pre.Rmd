@@ -1,0 +1,366 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-05-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r library}
+library(dplyr)
+library(tidyr)
+library(Hmisc)
+library(jomo)
+library(mice)
+library(mitools)
+library(rms)
+library(mitml)
+library(survminer)
+library(patchwork) #Arrange plot
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+library(png)
+library(grid)
+library(haven) #read_dta
+```
+
+```{r data}
+data<-read_dta("PICC dynamic prediction v2.dta")
+
+write.csv(data,"data.csv",row.names = F)  # need to be csv file, otherwise it fails
+datanew<-read.csv("data.csv")  #import data again
+
+#Update data: PCP66 is a male, baseline age is 74.8
+
+datanew$sex[datanew$originalid=="PCP66"]<-0  #male is 0
+datanew$agebl[datanew$originalid=="PCP66"]<-74.8
+
+```
+
+```{r select variables need}
+
+
+data1<-datanew%>%
+  select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl","updrsblpart1","updrsyr1part1","updrsyr2part1","updrsyr3part1","updrsyr4part1","updrsyr5part1","updrsyr6part1","updrsyr7part1","updrsyr8part1","updrsyr9part1","updrsyr10part1","mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas","mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","hybl","hyyr1","hyyr2","hyyr3","hyyr4","hyyr5","hyyr6","hyyr7","hyyr8","hyyr9","hyyr10","hyyr11","hyyr12","sebl","seyr1","seyr2","seyr3","seyr4","seyr5","seyr6","seyr7","seyr8","seyr9","seyr10","seyr11","seyr12","ledbl","ledyr1","ledyr3","ledyr4","ledyr5","ledyr6","ledyr7","ledyr8","ledyr9","ledyr10","ledyr11","ledyr12","ledyr13","ledyr14","ledyr15","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
+
+data1$study<-factor(data1$study,
+                    levels = c(1,2,3,4,5,6),
+                    labels= c("CamPalGN","ICICLE","NYPUM","ParkWest","PICNICS","PINE"))
+
+
+```
+
+```{r check longitudinal outcome}
+
+#---MMSE----
+
+MMSE_data<-data1%>%
+  select("study","idpicc","originalid","incidencecase","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total")
+
+MMSE_data%>%
+  group_by(study)%>%
+  count(is.na(mmsebltotal))
+
+#All studies measured MMSE
+
+#----S&E-----
+  
+SE_data<-data1%>%
+  select("study","sebl","seyr1","seyr2","seyr3","seyr4","seyr5","seyr6","seyr7","seyr8","seyr9","seyr10","seyr11","seyr12")
+
+SE_data%>%
+  group_by(study)%>%
+  count(is.na(sebl))
+
+#S&E missing all in ICICLE
+
+#----H&Y----
+
+HY_data<-data1%>%
+  select("study","idpicc","originalid","incidencecase","hybl","hyyr1","hyyr2","hyyr3","hyyr4","hyyr5","hyyr6","hyyr7","hyyr8","hyyr9","hyyr10","hyyr11","hyyr12")
+
+HY_data%>%
+  group_by(study)%>%
+  count(is.na(hybl))
+
+#All studies measured H&Y
+
+#-----daily levodopa equivalent doses----
+
+led_data<-data1%>%
+  select("study","ledbl","ledyr1","ledyr3","ledyr4","ledyr5","ledyr6","ledyr7","ledyr8","ledyr9","ledyr10","ledyr11","ledyr12","ledyr13","ledyr14","ledyr15")
+
+led_data%>%
+  group_by(study)%>%
+  count(is.na(ledbl))
+
+#daily levodopa equivalent doses missing all in ParkWest
+
+#----MDSUPDRS part3-----
+
+mdsupdrs3<-data1%>%
+  select("study","idpicc","originalid","incidencecase","mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas","mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda")
+
+mdsupdrs3%>%
+  group_by(study)%>%
+  count(is.na(mdsupdrspart3bltotalconvertedasa))
+
+#All studies measured mdsupdrs part 3
+
+#----MDSUPDRS part1-----
+
+updrspart1_data<-data1%>%
+  select("study","updrsblpart1","updrsyr1part1","updrsyr2part1","updrsyr3part1","updrsyr4part1","updrsyr5part1","updrsyr6part1","updrsyr7part1","updrsyr8part1","updrsyr9part1","updrsyr10part1")
+
+updrspart1_data%>%
+  group_by(study)%>%
+  count(is.na(updrsblpart1))
+
+#ICICLE missing all updrs part1
+```
+
+```{r change long format (longitudinal)}
+
+#get variables that need. 
+
+data2<-data1%>%
+  select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl","mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas","mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","hybl","hyyr1","hyyr2","hyyr3","hyyr4","hyyr5","hyyr6","hyyr7","hyyr8","hyyr9","hyyr10","hyyr11","hyyr12","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
+
+  
+#-----create follow-up times in years----
+
+data2$year1<-as.numeric(as.Date(as.character(data1$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year2<-as.numeric(as.Date(as.character(data1$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+
+data2$year3<-as.numeric(as.Date(as.character(data1$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year4<-as.numeric(as.Date(as.character(data1$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year5<-as.numeric(as.Date(as.character(data1$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year6<-as.numeric(as.Date(as.character(data1$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year7<-as.numeric(as.Date(as.character(data1$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year8<-as.numeric(as.Date(as.character(data1$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year9<-as.numeric(as.Date(as.character(data1$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year10<-as.numeric(as.Date(as.character(data1$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year11<-as.numeric(as.Date(as.character(data1$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year12<-as.numeric(as.Date(as.character(data1$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year13<-as.numeric(as.Date(as.character(data1$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year14<-as.numeric(as.Date(as.character(data1$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data2$year15<-as.numeric(as.Date(as.character(data1$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+
+#-----create events/censoring years------
+
+data2<-data2 %>%
+  mutate(t=datedeath)%>%           
+  mutate(t=coalesce(t,datelastknownalive))%>%
+  mutate(t=coalesce(t,datelastseen))
+
+#if patients have the date of death then t is the date of death. If patients without date of death, then the censoring date will be the date of last know alive. If patients without the date of last know alive then the censoring date will be the date last seen. Because I found some patients with date of lost is much later than the last seen, but the measurement stop in the last seen visiting year.
+
+
+#sum(is.na(data2$t)) # 0 missing
+
+
+data2$cens<-ifelse(is.na(data2$datedeath),0,1)  #0=right censored, 1=event 
+
+data2$tt<-as.Date(as.character(data2$t), format="%Y-%m-%d")-
+                as.Date(as.character(data2$datevisitbl), format="%Y-%m-%d")
+
+data2$tt<-as.numeric(data2$tt)
+
+data2$years<-data2$tt/365.25  #1223 rows
+
+data2%>%
+  filter(tt==0)%>%
+  group_by(study)%>%
+  count()            #CamPalGN 7 ParkWest 2 PICNICS 13 (All only has one time visit) 
+
+data2<-data2%>%
+  filter(data2$years>0) #1201 removed 22 patients 
+
+
+#-----long format-----
+
+years_long<-data2%>%
+  pivot_longer(
+    cols = `year1`:`year15`,
+    names_to = "visityear",
+    values_to = "followupyears",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+#change mmseyr to year1 
+
+
+
+colnames(MMSE_data)[6:17]<-c("year1","year2","year3","year4",
+                          "year5","year6","year7","year8",
+                          "year9","year10","year11","year12")
+
+mmse_long<-MMSE_data%>%
+  pivot_longer(
+    cols = `year1`:`year12`,
+    names_to = "visityear",
+    values_to = "mmse",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+colnames(mdsupdrs3)[6:17]<-c("year1","year2","year3","year4",
+                          "year5","year6","year7","year8",
+                          "year9","year10","year11","year12")
+
+mdsupdrs_long<-mdsupdrs3%>%
+  pivot_longer(
+    cols = `year1`:`year12`,
+    names_to = "visityear",
+    values_to = "mdsupdrs3",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+colnames(HY_data)[6:17]<-c("year1","year2","year3","year4",
+                          "year5","year6","year7","year8",
+                          "year9","year10","year11","year12")
+
+hy_long<-HY_data%>%
+  pivot_longer(
+    cols = `year1`:`year12`,
+    names_to = "visityear",
+    values_to = "hy",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+```
+
+```{r cmobine long format datasets}
+#-----combine all long tidy------
+
+nrow(years_long)  #5091
+nrow(mmse_long)   #4382
+nrow(mdsupdrs_long)  #3827
+nrow(hy_long)    #5037
+
+years_long.new<-years_long%>%
+  select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl","mdsupdrspart3bltotalconvertedasa","mmsebltotal","hybl","cens","years","followupyears","visityear")
+
+
+mmse_long.new<-mmse_long%>%
+  select("study","idpicc","visityear","mmse")
+
+
+mdsupdrs_long.new<-mdsupdrs_long%>%
+  select("study","idpicc","visityear","mdsupdrs3")
+
+hy_long.new<-hy_long%>%
+  select("study","idpicc","visityear","hy")
+
+
+A<-merge(years_long.new, mmse_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+B<-merge(A, mdsupdrs_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long<-merge(B,hy_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T) 
+
+
+
+```
+
+
+```{r check missing in baseline variables}
+
+#----check age----
+
+data_long%>%
+  group_by(study)%>%
+  count(is.na(agebl))
+#10 patints in PINE missing agebl
+
+data_long%>%
+  filter(study=="PINE")%>%
+  filter(is.na(agebl))
+#idpicc 1170 1235 1261 1601
+
+#1170 The follow-up time is end in 10 years,but no sure why this patient has mmse value on 11 and 12 years. 
+#1235 The follow-up time is end in 9 years,but no sure why this patient has mmse value on 10 and 11 years.
+#1261 The follow-up time is end in 9 years,but no sure why this patient has mmse value on 10 and 11 years.
+#1601 only has baseline then only mmse value from year 6 to 9 
+
+PINE<-data_long%>%
+  filter(idpicc==1601)
+
+PINE2<-years_long.new%>%
+  filter(idpicc==1170)
+
+PINE3<-mmse_long.new%>%
+  filter(idpicc==1170)
+
+data2%>%
+  filter(idpicc==1601)
+
+#----check sex----
+
+data_long%>%
+  group_by(study)%>%
+  count(is.na(sex))
+#same problem as agebl in PINE
+
+#----check smoke----
+
+data_long%>%
+  group_by(study)%>%
+  count(is.na(smoking))
+
+#PINE has the highest missing due to the same problem, but the missing is small in others
+
+#-----check comorbidity----
+
+data_long%>%
+  group_by(study)%>%
+  count(is.na(charlsonbl))
+
+#CamPalGN and NYPUM missing whole charlsonbl #I don't think we can use it
+
+```
+
+```{r plot longitudinal outcome}
+
+ggplot(data = data_long, aes(x = followupyears, y = hy))+
+    geom_point()
+
+min(data_long$mmse,na.rm = T) #mmse has 0?
+min(data_long$hy,na.rm = T) #mmse has 0?
+
+```
