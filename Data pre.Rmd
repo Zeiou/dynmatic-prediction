@@ -28,7 +28,7 @@ library(haven) #read_dta
 ```
 
 ```{r data}
-data<-read_dta("PICC dynamic prediction v2.dta")
+data<-read_dta("PICC dynamic prediction v3.dta")
 
 write.csv(data,"data.csv",row.names = F)  # need to be csv file, otherwise it fails
 datanew<-read.csv("data.csv")  #import data again
@@ -38,18 +38,34 @@ datanew<-read.csv("data.csv")  #import data again
 datanew$sex[datanew$originalid=="PCP66"]<-0  #male is 0
 datanew$agebl[datanew$originalid=="PCP66"]<-74.8
 
+#update P150 H&Y year2 is 2 not 0
+#update P757 H&Y year1 is 1.5 not 0
+
+datanew$hyyr2[datanew$originalid=="P150"]<-2
+datanew$hyyr1[datanew$originalid=="P757"]<-1.5
+
+#UPDATE P195 need to be exclude cos patient decline the follow-up and without the visit date only mmse value in medical record
+
+datanew<-datanew%>%
+  filter(originalid!="P195")
+
+
 ```
 
 ```{r select variables need}
 
 
 data1<-datanew%>%
-  select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl","updrsblpart1","updrsyr1part1","updrsyr2part1","updrsyr3part1","updrsyr4part1","updrsyr5part1","updrsyr6part1","updrsyr7part1","updrsyr8part1","updrsyr9part1","updrsyr10part1","mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas","mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","hybl","hyyr1","hyyr2","hyyr3","hyyr4","hyyr5","hyyr6","hyyr7","hyyr8","hyyr9","hyyr10","hyyr11","hyyr12","sebl","seyr1","seyr2","seyr3","seyr4","seyr5","seyr6","seyr7","seyr8","seyr9","seyr10","seyr11","seyr12","ledbl","ledyr1","ledyr3","ledyr4","ledyr5","ledyr6","ledyr7","ledyr8","ledyr9","ledyr10","ledyr11","ledyr12","ledyr13","ledyr14","ledyr15","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
+  select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl","updrsblpart1","updrsyr1part1","updrsyr2part1","updrsyr3part1","updrsyr4part1","updrsyr5part1","updrsyr6part1","updrsyr7part1","updrsyr8part1","updrsyr9part1","updrsyr10part1","mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas","mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","hybl","hyyr1","hyyr2","hyyr3","hyyr4","hyyr5","hyyr6","hyyr7","hyyr8","hyyr9","hyyr10","hyyr11","hyyr12","sebl","seyr1","seyr2","seyr3","seyr4","seyr5","seyr6","seyr7","seyr8","seyr9","seyr10","seyr11","seyr12","ledbl","ledyr1","ledyr2","ledyr3","ledyr4","ledyr5","ledyr6","ledyr7","ledyr8","ledyr9","ledyr10","ledyr11","ledyr12","ledyr13","ledyr14","ledyr15","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
 
 data1$study<-factor(data1$study,
                     levels = c(1,2,3,4,5,6),
                     labels= c("CamPalGN","ICICLE","NYPUM","ParkWest","PICNICS","PINE"))
 
+
+#daily levodopa equivalent dose in ParkWest were all zero in baseline
+
+data1[data1$study=="ParkWest",]$ledbl<-0
 
 ```
 
@@ -91,13 +107,13 @@ HY_data%>%
 #-----daily levodopa equivalent doses----
 
 led_data<-data1%>%
-  select("study","ledbl","ledyr1","ledyr3","ledyr4","ledyr5","ledyr6","ledyr7","ledyr8","ledyr9","ledyr10","ledyr11","ledyr12","ledyr13","ledyr14","ledyr15")
+  select("study","idpicc","originalid","incidencecase","ledbl","ledyr1","ledyr2","ledyr3","ledyr4","ledyr5","ledyr6","ledyr7","ledyr8","ledyr9","ledyr10","ledyr11","ledyr12","ledyr13","ledyr14","ledyr15")
 
 led_data%>%
   group_by(study)%>%
   count(is.na(ledbl))
 
-#daily levodopa equivalent doses missing all in ParkWest
+
 
 #----MDSUPDRS part3-----
 
@@ -127,7 +143,13 @@ updrspart1_data%>%
 #get variables that need. 
 
 data2<-data1%>%
-  select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl","mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas","mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","hybl","hyyr1","hyyr2","hyyr3","hyyr4","hyyr5","hyyr6","hyyr7","hyyr8","hyyr9","hyyr10","hyyr11","hyyr12","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
+  select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl",
+         "ledbl","ledyr1","ledyr2","ledyr3","ledyr4","ledyr5","ledyr6","ledyr7","ledyr8","ledyr9","ledyr10","ledyr11","ledyr12","ledyr13","ledyr14","ledyr15",
+         "mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas","mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda",
+         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total",
+         "hybl","hyyr1","hyyr2","hyyr3","hyyr4","hyyr5","hyyr6","hyyr7","hyyr8","hyyr9","hyyr10","hyyr11","hyyr12",
+         "datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15",
+         "datelastseen","datelastknownalive","datedeath","datedementia","datelost")
 
   
 #-----create follow-up times in years----
@@ -263,15 +285,32 @@ hy_long<-HY_data%>%
     values_transform = ~ as.numeric(gsub(",", "", .x)),
     values_drop_na = T
   )
+
+
+colnames(led_data)[6:20]<-c("year1","year2","year3","year4",
+                          "year5","year6","year7","year8",
+                          "year9","year10","year11","year12","year13","year14","year15")
+
+led_long<-led_data%>%
+  pivot_longer(
+    cols = `year1`:`year15`,
+    names_to = "visityear",
+    values_to = "led",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+
 ```
 
 ```{r cmobine long format datasets}
 #-----combine all long tidy------
 
 nrow(years_long)  #5091
-nrow(mmse_long)   #4382
+nrow(mmse_long)   #4378
 nrow(mdsupdrs_long)  #3827
 nrow(hy_long)    #5037
+nrow(led_long) #5053
 
 years_long.new<-years_long%>%
   select("study","idpicc","originalid","incidencecase","agebl","sex","smoking","comorbiditylistbl","charlsonbl","mdsupdrspart3bltotalconvertedasa","mmsebltotal","hybl","cens","years","followupyears","visityear")
@@ -287,14 +326,18 @@ mdsupdrs_long.new<-mdsupdrs_long%>%
 hy_long.new<-hy_long%>%
   select("study","idpicc","visityear","hy")
 
+led_long.new<-led_long%>%
+  select("study","idpicc","visityear","led")
 
 A<-merge(years_long.new, mmse_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
 
 B<-merge(A, mdsupdrs_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
 
-data_long<-merge(B,hy_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T) 
+C<-merge(B,hy_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T) 
 
+data_long<-merge(C,led_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T) 
 
+data_long<-data_long[order(data_long$idpicc,data_long$visityear), ]
 
 ```
 
@@ -309,26 +352,31 @@ data_long%>%
 #10 patints in PINE missing agebl
 
 data_long%>%
-  filter(study=="PINE")%>%
+  filter(study=="ParkWest")%>%
   filter(is.na(agebl))
-#idpicc 1170 1235 1261 1601
+#idpicc 1170 1235 1261 1116 1132 1136 1151 1152 1156 1161
+#343 382 384 390 405
+#534
 
-#1170 The follow-up time is end in 10 years,but no sure why this patient has mmse value on 11 and 12 years. 
-#1235 The follow-up time is end in 9 years,but no sure why this patient has mmse value on 10 and 11 years.
-#1261 The follow-up time is end in 9 years,but no sure why this patient has mmse value on 10 and 11 years.
-#1601 only has baseline then only mmse value from year 6 to 9 
 
-PINE<-data_long%>%
-  filter(idpicc==1601)
+#1170 The follow-up time is end in 10 years,patient has mmse value on 11 and 12 years. 
+#1235 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
+#1261 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
 
-PINE2<-years_long.new%>%
-  filter(idpicc==1170)
+#1116 The follow-up time is end in 11 years, patients has led value at 12 years.
+#1132 The follow-up time is end in 5 years, patients has led value at 6 years.
+#1136 The follow-up time is end in 6 years, patients has led value at 7 years.
+#1151 doesn't have follow-up
+#1152 The follow-up time is end in 5 years, patients has led value at 6 years.
+#1156 The follow-up time is end in 2 years, patients has led value at 3 years.
+#1161 The follow-up time is end in 11 years, patients has led value at 12 years.
+#... same with other idpicc not list here anymore
 
-PINE3<-mmse_long.new%>%
-  filter(idpicc==1170)
+#------remove value outside the last seen date-----
 
-data2%>%
-  filter(idpicc==1601)
+#Due to the data just medical records not real follow-up we remove it
+
+data_long<-data_long[!is.na(data_long$agebl),]
 
 #----check sex----
 
@@ -343,24 +391,249 @@ data_long%>%
   group_by(study)%>%
   count(is.na(smoking))
 
-#PINE has the highest missing due to the same problem, but the missing is small in others
+#PINE has the highest missing 61
+
+data2%>%
+  group_by(study)%>%
+  count(is.na(smoking))
 
 #-----check comorbidity----
 
-data_long%>%
+data2%>%
   group_by(study)%>%
   count(is.na(charlsonbl))
 
-#CamPalGN and NYPUM missing whole charlsonbl #I don't think we can use it
+```
+
+```{r check how many after 10 years}
+
+#There only PINE study have years 11 and further follow-up
+
+
+data2%>%
+  group_by(study)%>%
+  count(year11)
+
+check<-data2%>%
+  filter(study=="CamPalGN")
+
+#We only keep data to follow up year 10
+
+data_long.new<-data_long[data_long$years<11,]
+  
 
 ```
 
-```{r plot longitudinal outcome}
 
-ggplot(data = data_long, aes(x = followupyears, y = hy))+
-    geom_point()
+```{r check pre longitudinal outcome mmse}
 
-min(data_long$mmse,na.rm = T) #mmse has 0?
-min(data_long$hy,na.rm = T) #mmse has 0?
+data_plot<-data_long.new[order(data_long$followupyears), ]
 
+mmse_plot<-data_plot%>%
+   select("study","idpicc","originalid","followupyears","visityear","mmse")
+
+mmse_plot<-mmse_plot[complete.cases(mmse_plot),]
+
+mmse_plot<-mmse_plot%>%
+  arrange(idpicc,followupyears)
+
+
+ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+#check the one with all zero MMSE in followup years
+
+mmse_plot%>%
+  filter(mmse==0)
+
+#1602
+#1666
+#1677
+
+mmse_plot%>%
+  filter(idpicc==1602) #21 4 0 0 0 0 0 
+
+mmse_plot%>%
+  filter(idpicc==1666) # 0 0
+
+mmse_plot%>%
+  filter(idpicc==1677) # 19 18 10 0 0
+
+
+ggplot(data = subset(mmse_plot,study=="CamPalGN"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="ICICLE"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="ParkWest"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="PICNICS"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="NYPUM"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="PINE"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+
+
+PINE_mmse<-subset(mmse_plot,study=="PINE")
+
+PINE_mmse%>%
+  filter(followupyears>10)%>%
+  arrange(idpicc,followupyears)
+
+#1172 in year 11 is 0,but year 12 is 2
+
+PINE_mmse%>%
+  filter(idpicc==1172) #year 8 & 9 is 6 but year 10 is 16 #check record is correct
+
+
+
+
+```
+
+
+```{r check pre longitudinal outcome mdsupdrs}
+
+mdsupdrs3_plot<-data_plot%>%
+   select("study","idpicc","originalid","followupyears","visityear","mdsupdrs3")
+
+mdsupdrs3_plot<-mdsupdrs3_plot[complete.cases(mdsupdrs3_plot),]
+
+mdsupdrs3_plot<-mdsupdrs3_plot%>%
+                 arrange(idpicc,followupyears)
+
+ggplot(data = mdsupdrs3_plot, aes(x = followupyears, y = mdsupdrs3,group=idpicc))+
+    geom_line()
+
+
+ggplot(data = subset(mdsupdrs3_plot,study=="CamPalGN"), aes(x = followupyears, y = mdsupdrs3,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mdsupdrs3_plot,study=="ICICLE"), aes(x = followupyears, y = mdsupdrs3,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mdsupdrs3_plot,study=="ParkWest"), aes(x = followupyears, y = mdsupdrs3,group=idpicc))+
+    geom_line()
+
+
+ggplot(data = subset(mdsupdrs3_plot,study=="NYPUM"), aes(x = followupyears, y = mdsupdrs3,group=idpicc))+
+    geom_line()
+
+
+ggplot(data = subset(mdsupdrs3_plot,study=="PICNICS"), aes(x = followupyears, y = mdsupdrs3,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mdsupdrs3_plot,study=="PINE"), aes(x = followupyears, y = mdsupdrs3,group=idpicc))+
+    geom_line()
+
+
+
+```
+
+
+```{r check pre longitudinal outcome HY}
+
+hy_plot<-data_plot%>%
+   select("study","idpicc","originalid","followupyears","visityear","hy")
+
+hy_plot<-hy_plot[complete.cases(hy_plot),]
+
+hy_plot<-hy_plot%>%
+        arrange(idpicc,followupyears)
+
+ggplot(data = hy_plot, aes(x = followupyears, y = hy,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(hy_plot,study=="CamPalGN"), aes(x = followupyears, y = hy,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(hy_plot,study=="ICICLE"), aes(x = followupyears, y = hy,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(hy_plot,study=="ParkWest"), aes(x = followupyears, y = hy,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(hy_plot,study=="NYPUM"), aes(x = followupyears, y = hy,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(hy_plot,study=="PICNICS"), aes(x = followupyears, y = hy,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(hy_plot,study=="PINE"), aes(x = followupyears, y = hy,group=idpicc))+
+    geom_line()
+
+```
+
+
+```{r check pre longitudinal outcome led}
+
+led_plot<-data_plot%>%
+   select("study","idpicc","originalid","followupyears","visityear","led")
+
+led_plot<-led_plot[complete.cases(led_plot),]
+
+led_plot<-led_plot%>%
+                 arrange(idpicc,followupyears)
+
+ggplot(data = led_plot, aes(x = followupyears, y = led,group=idpicc))+
+    geom_line()
+
+
+ggplot(data = subset(led_plot,study=="CamPalGN"), aes(x = followupyears, y = led,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(led_plot,study=="ICICLE"), aes(x = followupyears, y = led,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(led_plot,study=="ParkWest"), aes(x = followupyears, y = led,group=idpicc))+
+    geom_line()
+
+
+ggplot(data = subset(led_plot,study=="NYPUM"), aes(x = followupyears, y = led,group=idpicc))+
+    geom_line()
+
+
+ggplot(data = subset(led_plot,study=="PICNICS"), aes(x = followupyears, y = led,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(led_plot,study=="PINE"), aes(x = followupyears, y = led,group=idpicc))+
+    geom_line()
+
+
+
+```
+
+
+```{r }
+
+#I think I can built two models, one is joint model, with updrs/led/mmse
+#The other is HY in landmarking
+
+
+```
+
+
+
+```{r try randome effect linear}
+
+ggplot(data = mmse_plot, aes(x = followupyears, y = mmse))+
+    geom_point()+
+    geom_smooth(method = "loess")
+
+ggplot(data = mdsupdrs3_plot, aes(x = followupyears, y = mdsupdrs3))+
+    geom_point()+
+    geom_smooth(method = "loess")
+
+ggplot(data = hy_plot, aes(x = followupyears, y = hy))+
+    geom_point()+
+    geom_smooth(method = "loess")
+
+library(nlme)
+
+lme()
 ```
