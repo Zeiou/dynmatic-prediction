@@ -1,0 +1,898 @@
+---
+title: "Dementia pre 1"
+output: html_document
+date: "2023-05-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r library}
+library(dplyr)
+library(tidyr)
+library(Hmisc)
+library(finalfit)
+library(jomo)
+library(mice)
+library(mitools)
+library(rms)
+library(mitml)
+library(survminer)
+library(patchwork) #Arrange plot
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+library(png)
+library(grid)
+library(haven) #read_dta
+library(nlme)
+library("JMbayes2")
+```
+
+```{r data}
+data<-read_dta("PICC dynamic prediction v3.dta")
+
+write.csv(data,"data.csv",row.names = F)  # need to be csv file, otherwise it fails
+datanew<-read.csv("data.csv")  #import data again
+
+#Update data: PCP66 is a male, baseline age is 74.8
+
+datanew$sex[datanew$originalid=="PCP66"]<-0  #male is 0
+datanew$agebl[datanew$originalid=="PCP66"]<-74.8
+
+#update P150 H&Y year2 is 2 not 0
+#update P757 H&Y year1 is 1.5 not 0
+
+datanew$hyyr2[datanew$originalid=="P150"]<-2
+datanew$hyyr1[datanew$originalid=="P757"]<-1.5
+
+#UPDATE P195 need to be exclude cos patient decline the follow-up and without the visit date only mmse value in medical record
+
+datanew<-datanew%>%
+  filter(originalid!="P195")
+
+datanew[datanew$originalid=="PCP46",]
+```
+
+```{r select variables need}
+
+#Baseline age, sex, years of education, presence of hallucinations, cognitive symptoms (none, vs yes but not impairing functioning, vs yes and impairing functioning), ? H&Y stage, MDS-UPDRS part 3, (MMSE).
+
+
+
+data1<-datanew%>%
+  select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
+         "smoking",
+         "mdsupdrspart3bltotalconvertedasa",
+         "mdsupdrsbl102hallucinations", "updrsblitem2thoughtdisorders",
+         "mdsupdrsbl101cognitive","updrsblitem1intellectual",
+         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
+
+data1$study<-factor(data1$study,
+                    levels = c(1,2,3,4,5,6),
+                    labels= c("CamPalGN","ICICLE","NYPUM","ParkWest","PICNICS","PINE"))
+
+
+#daily levodopa equivalent dose in ParkWest were all zero in baseline
+
+#----change into factor---
+
+data1$sex<-factor(data1$sex,
+                    levels = c(0,1),
+                    labels= c("male","female"))
+
+
+#UPDATE PCP46 and PCP66 both male
+
+data1[data1$originalid=="PCP46",]$sex<-"male"
+data1[data1$originalid=="PCP46",]$idpicc<-1692
+data1[data1$originalid=="PCP66",]$sex<-"male"
+data1[data1$originalid=="PCP66",]$idpicc<-1693
+
+
+data1$smoking<-factor(data1$smoking,
+                    levels = c(1,2,3),
+                    labels= c("current smoker","ex smoker","never smoker"))
+
+
+#------Create index for hallucinations------
+
+data1$updrshallucinations<-ifelse(data1$mdsupdrsbl102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1$updrsthoughtdisorders<-ifelse(data1$updrsblitem2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1<-data1 %>%
+      mutate(hallucinationsindex=updrshallucinations)%>%           
+      mutate(hallucinationsindex=coalesce(hallucinationsindex,updrsthoughtdisorders)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1$hallucinationsindex<-factor(data1$hallucinationsindex,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+
+
+#-----Create index for cognitive---------
+
+#Cognitive symptoms as measured by UPDRS item 1 (intellectual impairment)/MDS-UPDRS item 1 (cognitive impairment), categorized as 0 (no cognitive symptoms), 1 (cognitive symptoms, not impairing functioning), 2+ (cognitive symptoms impairing functioning).
+
+data1$mdsupdrsbl101cognitive[data1$mdsupdrsbl101cognitive>1]<-2
+data1$updrsblitem1intellectual[data1$updrsblitem1intellectual>1]<-2
+
+data1<-data1 %>%
+      mutate(cognitiveindex=mdsupdrsbl101cognitive)%>%           
+      mutate(cognitiveindex=coalesce(cognitiveindex,updrsblitem1intellectual)) 
+
+
+#0 is no cognitive symptoms, 1 is cognitive symptoms, not impairing functioning, 2 is cognitive symptoms impairing functioning
+
+
+data1$cognitiveindex<-factor(data1$cognitiveindex,
+                             levels = c(0,1,2),
+                             labels = c("no cognitive symptoms", "cognitive symptoms but not impairing functioning","cognitive symptoms impairing functioning"))
+
+
+
+table(data1$study,data1$hallucinationsindex)
+table(data1$study,data1$cognitiveindex)
+
+#ICICLE missing all 
+
+#If to include those two predictors, we need to exclude ICICLE
+```
+
+
+```{r cens events}
+
+#-----create events/censoring years------
+
+data1<-data1 %>%
+  mutate(t=datedementia)%>%           
+  mutate(t=coalesce(t,datelastknownalive))%>%
+  mutate(t=coalesce(t,datelastseen))
+
+#if patients have the date of death then t is the date of dementia. If patients without date of dementia, then the censoring date will be the date of last know alive. If patients without the date of last know alive then the censoring date will be the date last seen. Because I found some patients with date of lost is much later than the last seen, but the measurement stop in the last seen visiting year.
+
+
+#sum(is.na(data2$t)) # 0 missing
+
+
+
+data1$cens<-ifelse(is.na(data1$datedementia),0,1)  #0=right censored, 1=event 
+
+data1$tt<-as.Date(as.character(data1$t), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d")
+
+data1$tt<-as.numeric(data1$tt)
+
+data1$years<-data1$tt/365.25  #1222 rows
+
+data1%>%
+  filter(tt==0)%>%
+  group_by(study)%>%
+  count()            #CamPalGN 21 ICICLE 3 NYPUM 8 ParkWest 4 PICNICS 29 PINE 14 
+
+
+data1%>%
+  filter(tt<0)%>%
+  group_by(study)%>%
+  count()          #PINE 62, already has dementia before baseline visit
+
+data1<-data1%>%
+  filter(data1$years>0) #1080 removed 142 patients 
+
+data1%>%
+  group_by(study)%>%
+  count()
+
+
+data1%>%
+  group_by(study)%>%
+  summarise(sum(cens))
+```
+
+
+```{r only keep those have mmse follow-up}
+
+data.nommse.follow<-data1%>%
+  filter(is.na(mmseyr1total)&is.na(mmseyr2total)&is.na(mmseyr3total)&is.na(mmseyr4total)&is.na(mmseyr5total)&is.na(mmseyr6total)&is.na(mmseyr7total)&is.na(mmseyr8total)&is.na(mmseyr9total)&is.na(mmseyr10total)&is.na(mmseyr11total)&is.na(mmseyr12total))
+
+data.nommse.follow%>%
+  group_by(study)%>%
+  count()
+
+#ICICLE 14, NYPUM 6, ParkWest 3, PICNICS 19, PINE 5 (P158,P529,P579,P794,P85)
+#47 patients didn't have mmse follow-up 
+
+data1<-data1%>%
+  filter(!is.na(mmseyr1total)|!is.na(mmseyr2total)|!is.na(mmseyr3total)|!is.na(mmseyr4total)|!is.na(mmseyr5total)|!is.na(mmseyr6total)|!is.na(mmseyr7total)|!is.na(mmseyr8total)|!is.na(mmseyr9total)|!is.na(mmseyr10total)|!is.na(mmseyr11total)|!is.na(mmseyr12total))
+
+
+```
+
+
+
+```{r change long format (longitudinal)}
+
+#-----create follow-up times in years----
+
+data1$year1<-as.numeric(as.Date(as.character(data1$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year2<-as.numeric(as.Date(as.character(data1$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+
+data1$year3<-as.numeric(as.Date(as.character(data1$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year4<-as.numeric(as.Date(as.character(data1$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year5<-as.numeric(as.Date(as.character(data1$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year6<-as.numeric(as.Date(as.character(data1$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year7<-as.numeric(as.Date(as.character(data1$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year8<-as.numeric(as.Date(as.character(data1$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year9<-as.numeric(as.Date(as.character(data1$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year10<-as.numeric(as.Date(as.character(data1$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year11<-as.numeric(as.Date(as.character(data1$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year12<-as.numeric(as.Date(as.character(data1$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year13<-as.numeric(as.Date(as.character(data1$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year14<-as.numeric(as.Date(as.character(data1$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1$year15<-as.numeric(as.Date(as.character(data1$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+#-----long format-----
+
+years_long<-data1%>%
+  pivot_longer(
+    cols = `year1`:`year15`,
+    names_to = "visityear",
+    values_to = "followupyears",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+#change mmseyr to year1 
+
+
+MMSE_data<-data1%>%
+  select("study","idpicc","originalid","incidencecase","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total")
+
+
+colnames(MMSE_data)[6:17]<-c("year1","year2","year3","year4",
+                          "year5","year6","year7","year8",
+                          "year9","year10","year11","year12")
+
+mmse_long<-MMSE_data%>%
+  pivot_longer(
+    cols = `year1`:`year12`,
+    names_to = "visityear",
+    values_to = "mmse",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+
+```
+
+```{r cmobine long format datasets}
+#-----combine all long tidy------
+
+nrow(years_long)  #5091
+nrow(mmse_long)   #4378
+
+
+years_long.new<-years_long%>%
+  select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
+         "smoking",
+         "mdsupdrspart3bltotalconvertedasa",
+         "hallucinationsindex",
+         "cognitiveindex",
+         "cens","years","followupyears","visityear")
+
+
+mmse_long.new<-mmse_long%>%
+  select("study","idpicc","visityear","mmse")
+
+
+data_long<-merge(years_long.new, mmse_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long<-data_long[order(data_long$idpicc,data_long$visityear), ]
+
+```
+
+
+```{r check missing in baseline variables in longtitude datasets}
+
+#----check age----
+
+data_long%>%
+  group_by(study)%>%
+  count(is.na(agebl))
+#6 patints in PINE missing agebl
+
+data_long%>%
+  filter(study=="PINE")%>%
+  filter(is.na(agebl))
+#idpicc 1170 1235 1261 
+
+#1170 The follow-up time is end in 10 years,patient has mmse value on 11 and 12 years. 
+#1235 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
+#1261 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
+
+#------remove value outside the last seen date-----
+
+#Due to the data just medical records not real follow-up we remove it
+
+data_long<-data_long[!is.na(data_long$agebl),]
+
+#----check sex----
+
+data_long%>%
+  group_by(study)%>%
+  count(is.na(sex))
+
+```
+
+```{r up to 10 years}
+
+#There only PINE study have years 11 and further follow-up
+
+
+data1%>%
+  group_by(study)%>%
+  count(year11)
+
+
+#We only keep data to follow up year 10
+  
+data_long.new<-data_long%>%
+               filter(years<11)
+
+```
+
+
+```{r check pre longitudinal outcome mmse}
+
+data_plot<-data_long.new[order(data_long$followupyears), ]
+
+mmse_plot<-data_plot%>%
+   select("study","idpicc","originalid","followupyears","visityear","mmse")
+
+mmse_plot<-mmse_plot[complete.cases(mmse_plot),]
+
+mmse_plot<-mmse_plot%>%
+  arrange(idpicc,followupyears)
+
+
+ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+#check the one with all zero MMSE in followup years
+
+mmse_plot%>%
+  filter(mmse==0)
+
+#1602
+#1666
+#1677
+
+mmse_plot%>%
+  filter(idpicc==1602) #21 4 0 0 0 0 0 
+
+mmse_plot%>%
+  filter(idpicc==1666) # 0 0
+
+mmse_plot%>%
+  filter(idpicc==1677) # 19 18 10 0 0
+
+
+ggplot(data = subset(mmse_plot,study=="CamPalGN"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="ICICLE"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="ParkWest"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="PICNICS"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="NYPUM"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="PINE"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+
+
+
+
+```
+
+```{r note}
+
+#Need to create one dataset that only has baseline and for Cox regression
+
+#Need to consider remove ICICLE, if mutiple imptuation is not good
+
+#Need to consider the mixed linear model, should have random effect for each study? or intercet/slope? another random effect for time
+
+
+```
+
+
+
+
+```{r create longtidude check}
+
+data.lm<-data_long.new%>%
+         select("study","idpicc","mmse",
+         "followupyears","visityear")
+
+#remove missing mmse in the data
+
+data.lm<-data.lm[complete.cases(data.lm),]
+
+#If patients only have baseline but no follow-up mmse than need to remove from baseline
+
+idpicc.lm<-unique(data.lm$idpicc)
+
+data.baseline[data.baseline$idpicc==c(idpicc.lm),]
+
+idpicc.lm<-c(idpicc.lm)
+
+unique(data_long$idpicc)
+unique(data_long.new$idpicc)
+unique(data.lm$idpicc)
+
+```
+
+
+```{r create baseline data}
+
+data.baseline<-data1%>%
+  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
+
+
+data.baseline<-data.baseline%>%
+                 filter(years<11)  #996 patients years<11
+```
+
+```{r missing pattern}
+
+data.rename<-data.baseline%>%
+  rename("Age at baseline"=agebl, 
+         "Sex"=sex,
+         "MDS-UPDRS part3"=mdsupdrspart3bltotalconvertedasa,"Hoehn and Yahr Scale"=hybl,"Smoking"=smoking,
+         "Hallucinations"=hallucinationsindex,"Cognitive symptoms"= cognitiveindex
+         ) 
+
+explanatory<-c("Smoking","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
+dependent<- c("cens","tt")
+
+mispattern<-data.rename %>% 
+  missing_pattern(explanatory)
+
+#-------Exclude ICICLE-------
+
+data.baseline.noIC<-data.baseline[data.baseline$study!="ICICLE",]
+
+data.baseline.noIC%>%
+  group_by(study)%>%
+  count()
+
+
+data.rename.noIC<-data.baseline.noIC%>%
+  rename("Age at baseline"=agebl, 
+         "Sex"=sex,
+         "MDS-UPDRS part3"=mdsupdrspart3bltotalconvertedasa,"Hoehn and Yahr Scale"=hybl, "Smoking"=smoking,
+         "Hallucinations"=hallucinationsindex,"Cognitive symptoms"= cognitiveindex
+         ) #
+
+explanatory<-c("Smoking","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
+dependent<- c("cens","tt") #"Smoking"
+
+mispattern<-data.rename.noIC %>% 
+  missing_pattern(explanatory)
+
+#---check how many missing at least one---
+
+colnames(data.baseline)
+
+nrow(data.baseline[complete.cases(data.baseline[,7:10]),])  
+
+1033-825 
+208/1033
+
+nrow(data.baseline.noIC[complete.cases(data.baseline.noIC[,7:10]),]) 
+
+896-825
+71/896
+
+```
+
+
+```{r jomo no run, chose to run the one without ICICLE}
+
+#-----Include ICICLE----
+
+data.baseline$cons<-1
+
+data.baseline$nelsonaalen<-nelsonaalen(data.baseline,years,cens) #0 is right censor,1 is event
+
+Y<- data.baseline[,c("mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
+
+
+X<-data.baseline[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
+
+clus<-data.baseline$study
+
+imp.dry<-jomo.MCMCchain(Y = Y,X = X,clus = clus, nburn = 2)
+
+set.seed(15678)
+imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
+
+
+#head(imp1$collectbeta) # check beta
+
+
+#plot trace for each parameter value
+
+
+
+#png("Jomo1.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+     xlab = "Iteration number" ) 
+
+#plot trace for cov matrix element
+#imp1$collectomega[,,1] #check the row and col name
+#Category variable don't need to plot, just a straight line
+
+plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[MDS-UPDRS,1,1]^2),
+     xlab = "Iteration number" )
+
+
+#dev.off()
+
+
+# Capture the state of the sampler as starting values for the second set of iterations:
+beta.start <- imp1$collectbeta[,,5000] # capture the fixed parameter values
+l1cov.start <- imp1$collectomega[,,5000] # capture the level-1 covariance matrix values
+start.imp <- imp1$finimp.latnorm # capture the final imputed data set 
+
+
+
+#Re-run the same function for a larger number of iterations
+imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov.start = l1cov.start,
+                       start.imp = start.imp, nburn = 5000)
+
+# Check the trace again
+
+#png("Jomo2.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+     xlab = "Iteration number" )
+
+plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+     xlab = "Iteration number" ) 
+
+#plot trace for cov matrix element
+
+plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
+     xlab = "Iteration number" )
+
+
+
+#dev.off()
+
+#collect posterior mean of cov matrix
+l1cov.guess <- apply(imp2$collectomega, c(1, 2), mean)
+
+dim(imp2$collectomega[,,1]) #degrees of freedom is 6
+
+# Multiply by degrees of freedom to get scale matrix
+
+l1cov.prior <- l1cov.guess*6
+
+# Perform multilevel imputation:
+imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 8,meth = "random" )  #The nimp is the precentage of missing 
+
+
+```
+
+
+
+```{r jomo exclude ICICLE}
+
+#-----EXCLUDE ICICLE----
+
+
+data.baseline.noIC$cons<-1
+
+data.baseline.noIC$nelsonaalen<-nelsonaalen(data.baseline.noIC,years,cens) #0 is right censor,1 is event
+
+Y<- data.baseline.noIC[,c("mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
+
+
+X<-data.baseline.noIC[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
+
+clus<-data.baseline.noIC$study
+
+imp.dry<-jomo.MCMCchain(Y = Y,X = X,clus = clus, nburn = 2)
+
+set.seed(15678)
+imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
+
+
+#head(imp1$collectbeta) # check beta
+
+
+#plot trace for each parameter value
+
+
+
+#png("Jomo1.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+     xlab = "Iteration number" ) 
+
+#plot trace for cov matrix element
+#imp1$collectomega[,,1] #check the row and col name
+#Category variable don't need to plot, just a straight line
+
+plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[MDS-UPDRS,1,1]^2),
+     xlab = "Iteration number" )
+
+
+#dev.off()
+
+
+# Capture the state of the sampler as starting values for the second set of iterations:
+beta.start <- imp1$collectbeta[,,5000] # capture the fixed parameter values
+l1cov.start <- imp1$collectomega[,,5000] # capture the level-1 covariance matrix values
+start.imp <- imp1$finimp.latnorm # capture the final imputed data set 
+
+
+
+#Re-run the same function for a larger number of iterations
+imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov.start = l1cov.start,
+                       start.imp = start.imp, nburn = 5000)
+
+# Check the trace again
+
+#png("Jomo2.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+     xlab = "Iteration number" )
+
+plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+     xlab = "Iteration number" ) 
+
+#plot trace for cov matrix element
+
+plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
+     xlab = "Iteration number" )
+
+
+
+#dev.off()
+
+#collect posterior mean of cov matrix
+l1cov.guess <- apply(imp2$collectomega, c(1, 2), mean)
+
+dim(imp2$collectomega[,,1]) #degrees of freedom is 6
+
+# Multiply by degrees of freedom to get scale matrix
+
+l1cov.prior <- l1cov.guess*6
+
+# Perform multilevel imputation:
+imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 7,meth = "random" )  #The nimp is the precentage of missing 
+
+
+```
+
+
+
+```{r merge data baseline}
+
+names(imp3)
+dim(imp3)
+#View original (partially observed) data:
+head(imp3)
+# View last imputation (the left most column is the row number):
+head(imp3[imp3$Imputation == 1,])
+
+#create id to merge the data 
+
+data.baseline$id<-seq(nrow(data.baseline)) 
+
+data.baseline.time<-data.baseline%>%
+  select(id,study,idpicc,cens,tt,years)
+
+imp3.new<-merge(imp3,data.baseline.time,by.x = "id",by.y = "id")
+
+```
+
+
+```{r check the imputation set}
+
+imp3.new$age10<-imp3.new$agebl/10
+
+imp3.new$mdsupdrs3.10<-imp3.new$mdsupdrspart3bltotalconvertedasa/10
+
+summary(imp3.new)  #All positive in mdsupdrs3
+
+```
+
+```{r baseline Cox regression chose one to run}
+
+#-----Method 1----
+
+data.baseline.imp<-imputationList(split(imp3.new, imp3.new$Imputation)[-1])
+baseline.Cox<-with(data=data.baseline.imp,coxph(Surv(years,cens)~strata(clus)+age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex),x=T,y=T)
+MIcombine(baseline.Cox)
+summary(MIcombine(baseline.Cox))
+
+#----Method 2-----
+data.baseline.imp2<-jomo2mitml.list(imp3.new)
+baseline.Cox.2<-with(data=data.baseline.imp,cph(Surv(years,cens)~strat(clus)+age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex),x=T,y=T)
+testEstimates(baseline.Cox.2)
+```
+
+
+```{r check if the longtidue and baseline same patients number}
+
+nrow(data.baseline.noIC)
+unique(data.lm$idpicc)
+
+#Both 859 patients
+```
+
+```{r try randome effect linear}
+
+ggplot(data = mmse_plot, aes(x = followupyears, y = mmse))+
+    geom_point()+
+    geom_smooth(method = "loess")
+
+#---exclude ICICLE
+
+
+data.lm<-data_long.new%>%
+         select("study","idpicc","mmse",
+         "followupyears","visityear")%>%
+         filter(study!="ICICLE")
+
+
+
+data.lm%>%
+  filter(is.na(mmse))
+
+#remove missing mmse in the data
+
+data.lm<-data.lm[complete.cases(data.lm),]
+
+
+lmeFit<- lme(mmse~study+followupyears*study,
+                 data = data.lm, random = ~ followupyears | idpicc)
+
+```
+
+```{r note 3}
+
+#Need to think about what is the time_var in the function
+#The linear mix model is a joke so still need to check
+#Need to find out how to visual the linear mixed
+#https://stackoverflow.com/questions/31075407/plot-mixed-effects-model-in-ggplot
+
+jointFit1 <- jointModel(lmeObject = lmeFit,survObject = baseline.Cox, time_var = "followupyears")
+
+
+#'survObject' must inherit from class coxph or class survreg error!
+
+install.packages("JM")
+library(JM)
+#summary(jointFit1.p1)
+
+```
+
+```{r }
+
+#Is that means, I need to joint them 7 times as the mutiple impuation times
+#Then I used rubins rule to get the average one?
+
+```
+
+
+```{r }
+
+unique(data.lm$idpicc)
+
+
+```
