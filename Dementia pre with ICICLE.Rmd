@@ -1,0 +1,187 @@
+---
+title: "Dementia pre with ICICLE"
+output: html_document
+date: "2023-07-01"
+---
+
+```{r up to 10 years}
+
+
+data1.temp10<-survSplit(Surv(years, cens) ~ ., data = data1, cut = 10,
+                  episode="timegroup")
+
+
+data1.10.IC<-subset(data1.temp10, timegroup == 1) #only the first 10 year
+
+```
+
+
+```{r change long format (longitudinal)}
+
+#-----create follow-up times in years----
+
+data1.10.IC$year1<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year2<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+
+data1.10.IC$year3<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year4<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year5<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year6<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year7<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year8<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year9<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year10<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year11<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year12<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year13<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year14<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10.IC$year15<-as.numeric(as.Date(as.character(data1.10.IC$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.IC$datevisitbl), format="%Y-%m-%d"))/365.25
+
+#-----long format-----
+
+years_long.IC<-data1.10.IC%>%
+  pivot_longer(
+    cols = `year1`:`year15`,
+    names_to = "visityear",
+    values_to = "followupyears",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+#change mmseyr to year1 
+
+
+MMSE_data.IC<-data1.10.IC%>%
+  select("study","idpicc","originalid","incidencecase","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total")
+
+
+colnames(MMSE_data.IC)[6:17]<-c("year1","year2","year3","year4",
+                          "year5","year6","year7","year8",
+                          "year9","year10","year11","year12")
+
+mmse_long.IC<-MMSE_data.IC%>%
+  pivot_longer(
+    cols = `year1`:`year12`,
+    names_to = "visityear",
+    values_to = "mmse",
+    values_transform = ~ as.numeric(gsub(",", "", .x)),
+    values_drop_na = T
+  )
+
+
+```
+
+```{r cmobine long format datasets}
+#-----combine all long tidy------
+
+nrow(years_long.IC)  #4906
+nrow(mmse_long.IC)   #4244
+
+
+years_long.IC.new<-years_long.IC%>%
+  select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
+         "smoking",
+         "mdsupdrspart3bltotalconvertedasa",
+         "hallucinationsindex",
+         "cognitiveindex",
+         "cens","years","followupyears","visityear")
+
+
+mmse_long.IC.new<-mmse_long.IC%>%
+  select("study","idpicc","visityear","mmse")
+
+data_long.IC<-merge(years_long.IC.new, mmse_long.IC.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long.IC<-data_long.IC[order(data_long.IC$idpicc,data_long.IC$visityear), ]
+
+```
+
+
+```{r check missing in baseline variables in longtitude datasets}
+
+#----check age----
+
+data_long.IC%>%
+  group_by(study)%>%
+  count(is.na(agebl))
+#6 patints in PINE missing agebl
+
+#Due to the data just medical records not real follow-up we remove it
+
+data_long.IC<-data_long.IC[!is.na(data_long.IC$agebl),]
+
+#----check sex----
+
+data_long.IC%>%
+  group_by(study)%>%
+  count(is.na(sex))
+
+```
+
+
+```{r create longtidude data}
+
+data.lm.IC<-data_long.IC%>%
+  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
+
+
+#remove missing mmse in the data
+
+data.lm.IC<-data.lm.IC[complete.cases(data.lm.IC),]
+
+#a<-unique(data.lm$idpicc) 896 same as nrow(data.baseline)
+
+data.lm.IC.new<-data.lm.IC[data.lm.IC$years!=data.lm.IC$followupyears,]
+
+data_long.IC%>%
+  filter(idpicc==143)
+
+data.lm.IC.new%>%
+  filter(idpicc==143)
+```
+
+
+```{r create baseline data}
+
+data.baseline.IC<-data1.10.IC%>%
+  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
+
+length(unique(data.baseline.IC$idpicc)) #1033
+length(unique(data.lm.IC$idpicc)) #825
+
+data.baseline.new<-subset(data.baseline,unique(data.baseline$idpicc) %in% unique(data.lm$idpicc))
+
+#Reason why need to subset:#This is because the followupyears and years are the same in 69 patients. Patients death soon after the only time followup view at year 3.
+
+length(unique(data.baseline.new$idpicc)) #896
+length(unique(data.lm$idpicc)) #825
+```

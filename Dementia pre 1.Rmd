@@ -211,60 +211,77 @@ data1<-data1%>%
 ```
 
 
+```{r up to 10 years}
+
+
+#only 57 over 10 years
+
+data1.temp10<-survSplit(Surv(years, cens) ~ ., data = data1, cut = 10,
+                  episode="timegroup")
+
+
+data1.10<-subset(data1.temp10, timegroup == 1) #only the first 10 year
+
+#---No need for ICICLE----
+
+data1.10<-data1.10%>%
+  filter(study!="ICICLE")
+```
+
 
 ```{r change long format (longitudinal)}
 
 #-----create follow-up times in years----
 
-data1$year1<-as.numeric(as.Date(as.character(data1$datevisityr1), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year1<-as.numeric(as.Date(as.character(data1.10$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year2<-as.numeric(as.Date(as.character(data1$datevisityr2), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year2<-as.numeric(as.Date(as.character(data1.10$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
 
-data1$year3<-as.numeric(as.Date(as.character(data1$datevisityr3), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year3<-as.numeric(as.Date(as.character(data1.10$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year4<-as.numeric(as.Date(as.character(data1$datevisityr4), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year4<-as.numeric(as.Date(as.character(data1.10$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year5<-as.numeric(as.Date(as.character(data1$datevisityr5), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year5<-as.numeric(as.Date(as.character(data1.10$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year6<-as.numeric(as.Date(as.character(data1$datevisityr6), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year6<-as.numeric(as.Date(as.character(data1.10$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year7<-as.numeric(as.Date(as.character(data1$datevisityr7), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year7<-as.numeric(as.Date(as.character(data1.10$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year8<-as.numeric(as.Date(as.character(data1$datevisityr8), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year8<-as.numeric(as.Date(as.character(data1.10$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year9<-as.numeric(as.Date(as.character(data1$datevisityr9), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year9<-as.numeric(as.Date(as.character(data1.10$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year10<-as.numeric(as.Date(as.character(data1$datevisityr10), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year10<-as.numeric(as.Date(as.character(data1.10$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year11<-as.numeric(as.Date(as.character(data1$datevisityr11), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year11<-as.numeric(as.Date(as.character(data1.10$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year12<-as.numeric(as.Date(as.character(data1$datevisityr12), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year12<-as.numeric(as.Date(as.character(data1.10$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year13<-as.numeric(as.Date(as.character(data1$datevisityr13), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year13<-as.numeric(as.Date(as.character(data1.10$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year14<-as.numeric(as.Date(as.character(data1$datevisityr14), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year14<-as.numeric(as.Date(as.character(data1.10$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1$year15<-as.numeric(as.Date(as.character(data1$datevisityr15), format="%Y-%m-%d")-
-                as.Date(as.character(data1$datevisitbl), format="%Y-%m-%d"))/365.25
+data1.10$year15<-as.numeric(as.Date(as.character(data1.10$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
 #-----long format-----
 
-years_long<-data1%>%
+years_long<-data1.10%>%
   pivot_longer(
     cols = `year1`:`year15`,
     names_to = "visityear",
@@ -276,7 +293,7 @@ years_long<-data1%>%
 #change mmseyr to year1 
 
 
-MMSE_data<-data1%>%
+MMSE_data<-data1.10%>%
   select("study","idpicc","originalid","incidencecase","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total")
 
 
@@ -299,8 +316,8 @@ mmse_long<-MMSE_data%>%
 ```{r cmobine long format datasets}
 #-----combine all long tidy------
 
-nrow(years_long)  #5091
-nrow(mmse_long)   #4378
+nrow(years_long)  #4564
+nrow(mmse_long)   #3905
 
 
 years_long.new<-years_long%>%
@@ -314,7 +331,6 @@ years_long.new<-years_long%>%
 
 mmse_long.new<-mmse_long%>%
   select("study","idpicc","visityear","mmse")
-
 
 data_long<-merge(years_long.new, mmse_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
 
@@ -355,27 +371,11 @@ data_long%>%
 
 ```
 
-```{r up to 10 years}
-
-#There only PINE study have years 11 and further follow-up
-
-
-data1%>%
-  group_by(study)%>%
-  count(year11)
-
-
-#We only keep data to follow up year 10
-  
-data_long.new<-data_long%>%
-               filter(years<11)
-
-```
 
 
 ```{r check pre longitudinal outcome mmse}
 
-data_plot<-data_long.new[order(data_long$followupyears), ]
+data_plot<-data_long[order(data_long$followupyears), ]
 
 mmse_plot<-data_plot%>%
    select("study","idpicc","originalid","followupyears","visityear","mmse")
@@ -432,73 +432,47 @@ ggplot(data = subset(mmse_plot,study=="PINE"), aes(x = followupyears, y = mmse,g
 
 ```
 
-```{r note}
 
-#Need to create one dataset that only has baseline and for Cox regression
+```{r create longtidude data}
 
-#Need to consider remove ICICLE, if mutiple imptuation is not good
+data.lm<-data_long%>%
+  select("study","idpicc","visityear","originalid","mmse","cens","years","followupyears")
 
-#Need to consider the mixed linear model, should have random effect for each study? or intercet/slope? another random effect for time
-
-
-```
-
-
-
-
-```{r create longtidude check}
-
-data.lm<-data_long.new%>%
-         select("study","idpicc","mmse",
-         "followupyears","visityear")
 
 #remove missing mmse in the data
 
+data.lm[!is.na(data.lm$mmse),]
+
 data.lm<-data.lm[complete.cases(data.lm),]
 
-#If patients only have baseline but no follow-up mmse than need to remove from baseline
+#a<-unique(data.lm$idpicc) 896 same as nrow(data.baseline)
 
-idpicc.lm<-unique(data.lm$idpicc)
-
-data.baseline[data.baseline$idpicc==c(idpicc.lm),]
-
-idpicc.lm<-c(idpicc.lm)
-
-unique(data_long$idpicc)
-unique(data_long.new$idpicc)
-unique(data.lm$idpicc)
-
+data.lm.new<-data.lm[data.lm$years!=data.lm$followupyears,]
 ```
 
 
 ```{r create baseline data}
 
-data.baseline<-data1%>%
+data.baseline<-data1.10%>%
   select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
 
 
-data.baseline<-data.baseline%>%
-                 filter(years<11)  #996 patients years<11
+
+length(unique(data.baseline$idpicc)) #896
+length(unique(data.lm$idpicc)) #825
+
+data.baseline.new<-subset(data.baseline,unique(data.baseline$idpicc) %in% unique(data.lm$idpicc))
+
+#Reason why need to subset:#This is because the followupyears and years are the same in 69 patients. Patients death soon after the only time followup view at year 3.
+
+length(unique(data.baseline.new$idpicc)) #896
+length(unique(data.lm$idpicc)) #825
+
 ```
 
 ```{r missing pattern}
 
-data.rename<-data.baseline%>%
-  rename("Age at baseline"=agebl, 
-         "Sex"=sex,
-         "MDS-UPDRS part3"=mdsupdrspart3bltotalconvertedasa,"Hoehn and Yahr Scale"=hybl,"Smoking"=smoking,
-         "Hallucinations"=hallucinationsindex,"Cognitive symptoms"= cognitiveindex
-         ) 
-
-explanatory<-c("Smoking","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
-dependent<- c("cens","tt")
-
-mispattern<-data.rename %>% 
-  missing_pattern(explanatory)
-
-#-------Exclude ICICLE-------
-
-data.baseline.noIC<-data.baseline[data.baseline$study!="ICICLE",]
+data.baseline.noIC<-data.baseline.new
 
 data.baseline.noIC%>%
   group_by(study)%>%
@@ -520,379 +494,72 @@ mispattern<-data.rename.noIC %>%
 
 #---check how many missing at least one---
 
-colnames(data.baseline)
+#colnames(data.baseline.noIC)
 
-nrow(data.baseline[complete.cases(data.baseline[,7:10]),])  
-
-1033-825 
-208/1033
-
-nrow(data.baseline.noIC[complete.cases(data.baseline.noIC[,7:10]),]) 
-
-896-825
-71/896
+#nrow(data.baseline.noIC[complete.cases(data.baseline.noIC[,7:10]),]) 
 
 ```
 
+```{r age10}
 
-```{r jomo no run, chose to run the one without ICICLE}
+data.baseline.new$age10<-data.baseline.new$agebl/10
 
-#-----Include ICICLE----
-
-data.baseline$cons<-1
-
-data.baseline$nelsonaalen<-nelsonaalen(data.baseline,years,cens) #0 is right censor,1 is event
-
-Y<- data.baseline[,c("mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
-
-
-X<-data.baseline[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
-
-clus<-data.baseline$study
-
-imp.dry<-jomo.MCMCchain(Y = Y,X = X,clus = clus, nburn = 2)
-
-set.seed(15678)
-imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
-
-
-#head(imp1$collectbeta) # check beta
-
-
-#plot trace for each parameter value
-
-
-
-#png("Jomo1.png",width = 3500,height =2000,res = 400)
-
-#par(mfrow=c(2,4))
-
-plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
-     xlab = "Iteration number" )
-
-plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
-     xlab = "Iteration number" )
-
-plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
-     xlab = "Iteration number" ) 
-
-#plot trace for cov matrix element
-#imp1$collectomega[,,1] #check the row and col name
-#Category variable don't need to plot, just a straight line
-
-plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[MDS-UPDRS,1,1]^2),
-     xlab = "Iteration number" )
-
-
-#dev.off()
-
-
-# Capture the state of the sampler as starting values for the second set of iterations:
-beta.start <- imp1$collectbeta[,,5000] # capture the fixed parameter values
-l1cov.start <- imp1$collectomega[,,5000] # capture the level-1 covariance matrix values
-start.imp <- imp1$finimp.latnorm # capture the final imputed data set 
-
-
-
-#Re-run the same function for a larger number of iterations
-imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov.start = l1cov.start,
-                       start.imp = start.imp, nburn = 5000)
-
-# Check the trace again
-
-#png("Jomo2.png",width = 3500,height =2000,res = 400)
-
-#par(mfrow=c(2,4))
-
-plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
-     xlab = "Iteration number" )
-
-plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
-     xlab = "Iteration number" ) 
-
-#plot trace for cov matrix element
-
-plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
-     xlab = "Iteration number" )
-
-
-
-#dev.off()
-
-#collect posterior mean of cov matrix
-l1cov.guess <- apply(imp2$collectomega, c(1, 2), mean)
-
-dim(imp2$collectomega[,,1]) #degrees of freedom is 6
-
-# Multiply by degrees of freedom to get scale matrix
-
-l1cov.prior <- l1cov.guess*6
-
-# Perform multilevel imputation:
-imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 8,meth = "random" )  #The nimp is the precentage of missing 
-
+data.baseline.new$mdsupdrs3.10<-data.baseline.new$mdsupdrspart3bltotalconvertedasa/10
 
 ```
 
+```{r just one study for try}
+
+data.lm.cam<-data.lm.new%>%
+  filter(study=="CamPalGN")
+
+data.baseline.cam<-data.baseline.new%>%
+  filter(study=="CamPalGN")
 
 
-```{r jomo exclude ICICLE}
-
-#-----EXCLUDE ICICLE----
-
-
-data.baseline.noIC$cons<-1
-
-data.baseline.noIC$nelsonaalen<-nelsonaalen(data.baseline.noIC,years,cens) #0 is right censor,1 is event
-
-Y<- data.baseline.noIC[,c("mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
+length(unique(data.baseline.cam$idpicc)) #119
+length(unique(data.lm.cam$idpicc)) #118
 
 
-X<-data.baseline.noIC[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
-
-clus<-data.baseline.noIC$study
-
-imp.dry<-jomo.MCMCchain(Y = Y,X = X,clus = clus, nburn = 2)
-
-set.seed(15678)
-imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
+unique(data.baseline.cam$idpicc)
+unique(data.lm.cam$idpicc)
 
 
-#head(imp1$collectbeta) # check beta
+data.baseline.cam.new<-subset(data.baseline.cam,unique(data.baseline.cam$idpicc) %in% unique(data.lm.cam$idpicc))
+
+length(unique(data.baseline.cam.new$idpicc)) #118
+length(unique(data.lm.cam$idpicc)) #118
 
 
-#plot trace for each parameter value
+baseline.cox.cam<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.cam.new, x = TRUE,model = TRUE)
 
+lmeFit.cam<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data.lm.cam)
 
+jointFit.cam<-jm(baseline.cox.cam, lmeFit.cam, time_var = "followupyears")
 
-#png("Jomo1.png",width = 3500,height =2000,res = 400)
-
-#par(mfrow=c(2,4))
-
-plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
-     xlab = "Iteration number" )
-
-plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
-     xlab = "Iteration number" )
-
-plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
-     xlab = "Iteration number" ) 
-
-#plot trace for cov matrix element
-#imp1$collectomega[,,1] #check the row and col name
-#Category variable don't need to plot, just a straight line
-
-plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[MDS-UPDRS,1,1]^2),
-     xlab = "Iteration number" )
-
-
-#dev.off()
-
-
-# Capture the state of the sampler as starting values for the second set of iterations:
-beta.start <- imp1$collectbeta[,,5000] # capture the fixed parameter values
-l1cov.start <- imp1$collectomega[,,5000] # capture the level-1 covariance matrix values
-start.imp <- imp1$finimp.latnorm # capture the final imputed data set 
-
-
-
-#Re-run the same function for a larger number of iterations
-imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov.start = l1cov.start,
-                       start.imp = start.imp, nburn = 5000)
-
-# Check the trace again
-
-#png("Jomo2.png",width = 3500,height =2000,res = 400)
-
-#par(mfrow=c(2,4))
-
-plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
-     xlab = "Iteration number" )
-
-plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
-     xlab = "Iteration number" ) 
-
-#plot trace for cov matrix element
-
-plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
-     xlab = "Iteration number" )
-
-
-
-#dev.off()
-
-#collect posterior mean of cov matrix
-l1cov.guess <- apply(imp2$collectomega, c(1, 2), mean)
-
-dim(imp2$collectomega[,,1]) #degrees of freedom is 6
-
-# Multiply by degrees of freedom to get scale matrix
-
-l1cov.prior <- l1cov.guess*6
-
-# Perform multilevel imputation:
-imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 7,meth = "random" )  #The nimp is the precentage of missing 
-
-
+summary(jointFit.cam)
 ```
 
 
+```{r all study model}
 
-```{r merge data baseline}
+length(unique(data.baseline.new$idpicc)) #825
+length(unique(data.lm$idpicc)) #825
 
-names(imp3)
-dim(imp3)
-#View original (partially observed) data:
-head(imp3)
-# View last imputation (the left most column is the row number):
-head(imp3[imp3$Imputation == 1,])
+baseline.cox<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.new, x = TRUE,model = TRUE)
 
-#create id to merge the data 
-
-data.baseline$id<-seq(nrow(data.baseline)) 
-
-data.baseline.time<-data.baseline%>%
-  select(id,study,idpicc,cens,tt,years)
-
-imp3.new<-merge(imp3,data.baseline.time,by.x = "id",by.y = "id")
-
-```
+lmeFit<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data.lm)
 
 
-```{r check the imputation set}
+jointFit<-jm(baseline.cox, lmeFit, time_var = "followupyears")
 
-imp3.new$age10<-imp3.new$agebl/10
+#I think it didn't need to strata because joint model, all individual are independent. 
 
-imp3.new$mdsupdrs3.10<-imp3.new$mdsupdrspart3bltotalconvertedasa/10
-
-summary(imp3.new)  #All positive in mdsupdrs3
-
-```
-
-```{r baseline Cox regression chose one to run}
-
-#-----Method 1----
-
-data.baseline.imp<-imputationList(split(imp3.new, imp3.new$Imputation)[-1])
-baseline.Cox<-with(data=data.baseline.imp,coxph(Surv(years,cens)~strata(clus)+age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex),x=T,y=T)
-MIcombine(baseline.Cox)
-summary(MIcombine(baseline.Cox))
-
-#----Method 2-----
-data.baseline.imp2<-jomo2mitml.list(imp3.new)
-baseline.Cox.2<-with(data=data.baseline.imp,cph(Surv(years,cens)~strat(clus)+age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex),x=T,y=T)
-testEstimates(baseline.Cox.2)
-```
-
-
-```{r check if the longtidue and baseline same patients number}
-
-nrow(data.baseline.noIC)
-unique(data.lm$idpicc)
-
-#Both 859 patients
-```
-
-```{r try randome effect linear}
-
-ggplot(data = mmse_plot, aes(x = followupyears, y = mmse))+
-    geom_point()+
-    geom_smooth(method = "loess")
-
-#---exclude ICICLE
-
-
-data.lm<-data_long.new%>%
-         select("study","idpicc","mmse",
-         "followupyears","visityear")%>%
-         filter(study!="ICICLE")
-
-
-
-data.lm%>%
-  filter(is.na(mmse))
-
-#remove missing mmse in the data
-
-data.lm<-data.lm[complete.cases(data.lm),]
-
-
-lmeFit<- lme(mmse~study+followupyears*study,
-                 data = data.lm, random = ~ followupyears | idpicc)
-
-```
-
-```{r note 3}
-
-#Need to think about what is the time_var in the function
-#The linear mix model is a joke so still need to check
-#Need to find out how to visual the linear mixed
-#https://stackoverflow.com/questions/31075407/plot-mixed-effects-model-in-ggplot
-
-jointFit1 <- jointModel(lmeObject = lmeFit,survObject = baseline.Cox, time_var = "followupyears")
-
-
-#'survObject' must inherit from class coxph or class survreg error!
-
-install.packages("JM")
-library(JM)
-#summary(jointFit1.p1)
-
+summary(jointFit)
 ```
 
 ```{r }
 
-#Is that means, I need to joint them 7 times as the mutiple impuation times
-#Then I used rubins rule to get the average one?
-
-```
-
-
-```{r }
-
-unique(data.lm$idpicc)
-
+#check the 71 patients to see what's wrong with them and why it happens?
 
 ```
