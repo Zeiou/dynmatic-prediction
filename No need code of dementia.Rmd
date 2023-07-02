@@ -272,3 +272,58 @@ lmeFit<- lme(mmse~ followupyears+followupyears:clus, random = ~ followupyears | 
 
 
 ```
+
+
+```{r without loop}
+
+
+
+
+data.imp1$year1<-as.numeric(as.Date(as.character(data.imp1$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp1$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data.imp1$year2<-as.numeric(as.Date(as.character(data1.10$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+
+data1.10$year3<-as.numeric(as.Date(as.character(data1.10$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year4<-as.numeric(as.Date(as.character(data1.10$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year5<-as.numeric(as.Date(as.character(data1.10$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year6<-as.numeric(as.Date(as.character(data1.10$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year7<-as.numeric(as.Date(as.character(data1.10$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year8<-as.numeric(as.Date(as.character(data1.10$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year9<-as.numeric(as.Date(as.character(data1.10$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year10<-as.numeric(as.Date(as.character(data1.10$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year11<-as.numeric(as.Date(as.character(data1.10$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year12<-as.numeric(as.Date(as.character(data1.10$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year13<-as.numeric(as.Date(as.character(data1.10$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year14<-as.numeric(as.Date(as.character(data1.10$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+data1.10$year15<-as.numeric(as.Date(as.character(data1.10$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+
+
+```

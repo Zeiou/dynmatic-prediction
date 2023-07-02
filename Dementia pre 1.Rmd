@@ -220,12 +220,209 @@ data1.temp10<-survSplit(Surv(years, cens) ~ ., data = data1, cut = 10,
                   episode="timegroup")
 
 
-data1.10<-subset(data1.temp10, timegroup == 1) #only the first 10 year
+data1.10.all<-subset(data1.temp10, timegroup == 1) #only the first 10 year
 
 #---No need for ICICLE----
 
-data1.10<-data1.10%>%
+data1.10<-data1.10.all%>%
   filter(study!="ICICLE")
+```
+
+
+```{r impute baseline data}
+#impute data first before it change to longitudinal data
+
+data.rename.noIC<-data1.10%>%
+  rename("Age at baseline"=agebl, 
+         "Sex"=sex,
+         "MDS-UPDRS part3"=mdsupdrspart3bltotalconvertedasa,"Hoehn and Yahr Scale"=hybl, "Smoking"=smoking,
+         "Hallucinations"=hallucinationsindex,"Cognitive symptoms"= cognitiveindex
+         ) #
+
+explanatory<-c("Smoking","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
+dependent<- c("cens","tt") #"Smoking"
+
+mispattern<-data.rename.noIC %>% 
+  missing_pattern(explanatory)
+
+#---check how many missing at least one---
+
+colnames(data1.10)
+
+nrow(data1.10[complete.cases(data1.10[,c(8,9,50,51)]),])  #825
+
+(896-825)/896
+```
+
+```{r impute baseline data}
+
+#-----EXCLUDE ICICLE----
+
+data1.10$cons<-1
+
+data1.10$nelsonaalen<-nelsonaalen(data1.10,years,cens) #0 is right censor,1 is event
+
+Y<- data1.10[,c("mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
+
+
+X<-data1.10[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
+
+clus<-data1.10$study
+
+imp.dry<-jomo.MCMCchain(Y = Y,X = X,clus = clus, nburn = 2)
+
+set.seed(15678)
+imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
+
+
+#head(imp1$collectbeta) # check beta
+
+#plot trace for each parameter value
+
+#png("Jomo1.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+     xlab = "Iteration number" ) 
+
+#plot trace for cov matrix element
+#imp1$collectomega[,,1] #check the row and col name
+#Category variable don't need to plot, just a straight line
+
+plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[MDS-UPDRS,1,1]^2),
+     xlab = "Iteration number" )
+
+
+#dev.off()
+
+
+# Capture the state of the sampler as starting values for the second set of iterations:
+beta.start <- imp1$collectbeta[,,5000] # capture the fixed parameter values
+l1cov.start <- imp1$collectomega[,,5000] # capture the level-1 covariance matrix values
+start.imp <- imp1$finimp.latnorm # capture the final imputed data set 
+
+
+
+#Re-run the same function for a larger number of iterations
+imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov.start = l1cov.start,
+                       start.imp = start.imp, nburn = 5000)
+
+# Check the trace again
+
+#png("Jomo2.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+     xlab = "Iteration number" )
+
+plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+     xlab = "Iteration number" ) 
+
+#plot trace for cov matrix element
+
+plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
+     xlab = "Iteration number" )
+
+
+
+#dev.off()
+
+#collect posterior mean of cov matrix
+l1cov.guess <- apply(imp2$collectomega, c(1, 2), mean)
+
+dim(imp2$collectomega[,,1]) #degrees of freedom is 6
+
+# Multiply by degrees of freedom to get scale matrix
+
+l1cov.prior <- l1cov.guess*6
+
+# Perform multilevel imputation:
+imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 8,meth = "random" )  #The nimp is the precentage of missing 
+
+
+```
+
+```{r merge data baseline}
+
+names(imp3)
+dim(imp3)
+#View original (partially observed) data:
+head(imp3)
+# View last imputation (the left most column is the row number):
+head(imp3[imp3$Imputation == 1,])
+
+#create id to merge the data 
+
+data1.10$id<-seq(nrow(data1.10)) 
+
+data1.10.mmse<-data1.10%>%
+  select("id","study","idpicc","originalid",
+         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","cens","tt","years")
+
+imp3.new<-merge(imp3,data1.10.mmse,by.x = "id",by.y = "id")
+
+```
+
+
+```{r check the imputation set}
+
+imp3.new[imp3.new$mdsupdrspart3bltotalconvertedasa<0,]#only one negative patients idpicc 633
+
+imp3.new$mdsupdrspart3bltotalconvertedasa[imp3.new$idpicc==633 & imp3.new$Imputation==6]<-0
+
+imp3.new$age10<-imp3.new$agebl/10
+
+imp3.new$mdsupdrs3.10<-imp3.new$mdsupdrspart3bltotalconvertedasa/10
+
+summary(imp3.new$mdsupdrspart3bltotalconvertedasa)
+
+data.imp<-imputationList(split(imp3.new, imp3.new$Imputation)[-1])
+```
+
+```{r extract 8 imputed dataset}
+ 
+#There will be need to create 8 different imputation in baseline and longitudinal
+
+data.imp.new_names <- paste("data.imp",1:8,sep="")  # create names first
+
+# Loop through the indices of the list
+for (i in 1:8) {
+  # Extract the dataset based on the index
+  extracted_dataset <- imp.list[[i]]
+  
+  # Assign the extracted dataset to the corresponding variable
+  assign(paste0("data.imp", i), extracted_dataset)
+}
+
 ```
 
 
@@ -233,51 +430,26 @@ data1.10<-data1.10%>%
 
 #-----create follow-up times in years----
 
-data1.10$year1<-as.numeric(as.Date(as.character(data1.10$datevisityr1), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+# Define the variable names
+year_names <- paste0("year", 1:15)
 
-data1.10$year2<-as.numeric(as.Date(as.character(data1.10$datevisityr2), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
+# Convert year columns and baseline visit year to numeric
+data.imp1[, paste0("datevisityr", 1:15)] <- lapply(data.imp1[, paste0("datevisityr", 1:15)], as.Date,format="%Y-%m-%d")
+data.imp1$datevisitbl <- as.Date(data.imp1$datevisitbl,format="%Y-%m-%d")
+
+# Create new variables using a loop
+for (i in 1:15) {
+  # Calculate the difference between the year and baseline visit year
+  year <- as.numeric(data.imp1[[paste0("datevisityr", i)]] - data.imp1$datevisitbl)/365.25
+  
+  # Assign the calculated values to a new variable
+  
+  data.imp1[[year_names[i]]] <- year
+}
 
 
-data1.10$year3<-as.numeric(as.Date(as.character(data1.10$datevisityr3), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1.10$year4<-as.numeric(as.Date(as.character(data1.10$datevisityr4), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
-data1.10$year5<-as.numeric(as.Date(as.character(data1.10$datevisityr5), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year6<-as.numeric(as.Date(as.character(data1.10$datevisityr6), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year7<-as.numeric(as.Date(as.character(data1.10$datevisityr7), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year8<-as.numeric(as.Date(as.character(data1.10$datevisityr8), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year9<-as.numeric(as.Date(as.character(data1.10$datevisityr9), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year10<-as.numeric(as.Date(as.character(data1.10$datevisityr10), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year11<-as.numeric(as.Date(as.character(data1.10$datevisityr11), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year12<-as.numeric(as.Date(as.character(data1.10$datevisityr12), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year13<-as.numeric(as.Date(as.character(data1.10$datevisityr13), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year14<-as.numeric(as.Date(as.character(data1.10$datevisityr14), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
-
-data1.10$year15<-as.numeric(as.Date(as.character(data1.10$datevisityr15), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10$datevisitbl), format="%Y-%m-%d"))/365.25
 
 #-----long format-----
 
@@ -337,6 +509,39 @@ data_long<-merge(years_long.new, mmse_long.new, by = c("study","idpicc","visitye
 data_long<-data_long[order(data_long$idpicc,data_long$visityear), ]
 
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r create baseline data}
+
+data.baseline<-data1.10%>%
+  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
+
+
+
+length(unique(data.baseline$idpicc)) #896
+length(unique(data.lm$idpicc)) #825
+
+data.baseline.new<-subset(data.baseline,unique(data.baseline$idpicc) %in% unique(data.lm$idpicc))
+
+#Reason why need to subset:#This is because the followupyears and years are the same in 69 patients. Patients death soon after the only time followup view at year 3.
+
+length(unique(data.baseline.new$idpicc)) #896
+length(unique(data.lm$idpicc)) #825
+
+```
+
+
+
 
 
 ```{r check missing in baseline variables in longtitude datasets}
