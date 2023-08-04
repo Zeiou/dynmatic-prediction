@@ -414,6 +414,8 @@ data.imp<-imputationList(split(imp3.new, imp3.new$Imputation)[-1])
 
 data.imp.new_names <- paste("data.imp",1:8,sep="")  # create names first
 
+imp.list<-data.imp[["imputations"]]
+
 # Loop through the indices of the list
 for (i in 1:8) {
   # Extract the dataset based on the index
@@ -426,7 +428,7 @@ for (i in 1:8) {
 ```
 
 
-```{r change long format (longitudinal)}
+```{r change long format (longitudinal) for data.imp1}
 
 #-----create follow-up times in years----
 
@@ -447,13 +449,15 @@ for (i in 1:15) {
   data.imp1[[year_names[i]]] <- year
 }
 
+#head(data.imp1)
+#colnames(data.imp1)
+#colnames(data.imp1[,c(1:30,46:65)])
 
+data.imp1<-data.imp1[,c(1:30,46:65)]
 
+#----create year follow-up----
 
-
-#-----long format-----
-
-years_long<-data1.10%>%
+years_long.1<-data.imp1%>%
   pivot_longer(
     cols = `year1`:`year15`,
     names_to = "visityear",
@@ -462,18 +466,19 @@ years_long<-data1.10%>%
     values_drop_na = T
   )
 
+
+
 #change mmseyr to year1 
 
 
-MMSE_data<-data1.10%>%
-  select("study","idpicc","originalid","incidencecase","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total")
+MMSE_data.1<-data.imp1%>%
+  select("id","clus","idpicc","originalid","study","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total")
 
-
-colnames(MMSE_data)[6:17]<-c("year1","year2","year3","year4",
+colnames(MMSE_data.1)[7:18]<-c("year1","year2","year3","year4",
                           "year5","year6","year7","year8",
                           "year9","year10","year11","year12")
 
-mmse_long<-MMSE_data%>%
+mmse_long.1<-MMSE_data.1%>%
   pivot_longer(
     cols = `year1`:`year12`,
     names_to = "visityear",
@@ -485,15 +490,16 @@ mmse_long<-MMSE_data%>%
 
 ```
 
-```{r cmobine long format datasets}
+```{r cmobine long format dataset 1}
 #-----combine all long tidy------
 
-nrow(years_long)  #4564
-nrow(mmse_long)   #3905
+nrow(years_long.1)  #4564
+nrow(mmse_long.1)   #3905
 
 
-years_long.new<-years_long%>%
-  select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
+years_long.new.1<-years_long.1%>%
+  select("id","study","idpicc","originalid",
+         "agebl","sex","hybl",
          "smoking",
          "mdsupdrspart3bltotalconvertedasa",
          "hallucinationsindex",
@@ -501,59 +507,25 @@ years_long.new<-years_long%>%
          "cens","years","followupyears","visityear")
 
 
-mmse_long.new<-mmse_long%>%
-  select("study","idpicc","visityear","mmse")
+mmse_long.new.1<-mmse_long.1%>%
+  select("id","study","idpicc","visityear","mmse")
 
-data_long<-merge(years_long.new, mmse_long.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
+data_long.1<-merge(years_long.new.1, mmse_long.new.1, by = c("id","study","idpicc","visityear"),all.x = T,all.y = T)
 
-data_long<-data_long[order(data_long$idpicc,data_long$visityear), ]
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-```{r create baseline data}
-
-data.baseline<-data1.10%>%
-  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
-
-
-
-length(unique(data.baseline$idpicc)) #896
-length(unique(data.lm$idpicc)) #825
-
-data.baseline.new<-subset(data.baseline,unique(data.baseline$idpicc) %in% unique(data.lm$idpicc))
-
-#Reason why need to subset:#This is because the followupyears and years are the same in 69 patients. Patients death soon after the only time followup view at year 3.
-
-length(unique(data.baseline.new$idpicc)) #896
-length(unique(data.lm$idpicc)) #825
+data_long.1<-data_long.1[order(data_long.1$id,data_long.1$visityear), ]
 
 ```
 
-
-
-
-
-```{r check missing in baseline variables in longtitude datasets}
+```{r check missing age in longtitude datasets}
 
 #----check age----
 
-data_long%>%
+data_long.1%>%
   group_by(study)%>%
   count(is.na(agebl))
 #6 patints in PINE missing agebl
 
-data_long%>%
+data_long.1%>%
   filter(study=="PINE")%>%
   filter(is.na(agebl))
 #idpicc 1170 1235 1261 
@@ -566,32 +538,68 @@ data_long%>%
 
 #Due to the data just medical records not real follow-up we remove it
 
-data_long<-data_long[!is.na(data_long$agebl),]
+data_long.1<-data_long.1[!is.na(data_long.1$agebl),]
 
 #----check sex----
 
-data_long%>%
+data_long.1%>%
   group_by(study)%>%
   count(is.na(sex))
 
 ```
 
 
+```{r create longitudinal data1}
 
-```{r check pre longitudinal outcome mmse}
+#data_long.1[complete.cases(data_long.1),]
 
-data_plot<-data_long[order(data_long$followupyears), ]
+data_long.1<-data_long.1[!is.na(data_long.1$mmse),]
+
+
+#unique(data_long.1$id) 896 same as nrow(data.baseline)
+
+data_long.1<-data_long.1[data_long.1$years!=data_long.1$followupyears,]
+
+```
+
+```{r create baseline data}
+
+data.baseline.1<-data.imp1%>%
+  select("id","study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
+
+data.baseline.1$age10<-data.baseline.1$agebl/10
+
+data.baseline.1$mdsupdrs3.10<-data.baseline.1$mdsupdrspart3bltotalconvertedasa/10
+```
+
+```{r match longtidue data with baseline}
+
+#If patients only had one follow-up, which mean the follow-up equal to the event year, then need to be removed. 
+
+setdiff(unique(data.baseline.1$id),unique(data_long.1$id)) #65 182 351 689 737 839
+
+data.baseline.1<-data.baseline.1[data.baseline.1$id!=65,]
+data.baseline.1<-data.baseline.1[data.baseline.1$id!=182,]
+data.baseline.1<-data.baseline.1[data.baseline.1$id!=351,]
+data.baseline.1<-data.baseline.1[data.baseline.1$id!=689,]
+data.baseline.1<-data.baseline.1[data.baseline.1$id!=737,]
+data.baseline.1<-data.baseline.1[data.baseline.1$id!=839,]
+
+```
+
+
+```{r check longitudinal outcome mmse}
+
+data_plot<-data_long.1[order(data_long.1$followupyears), ]
 
 mmse_plot<-data_plot%>%
-   select("study","idpicc","originalid","followupyears","visityear","mmse")
-
-mmse_plot<-mmse_plot[complete.cases(mmse_plot),]
+   select("study","id","idpicc","followupyears","visityear","mmse")
 
 mmse_plot<-mmse_plot%>%
-  arrange(idpicc,followupyears)
+  arrange(id,followupyears)
 
 
-ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=idpicc))+
+ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=id))+
     geom_line()
 
 #check the one with all zero MMSE in followup years
@@ -599,12 +607,9 @@ ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=idpicc))+
 mmse_plot%>%
   filter(mmse==0)
 
-#1602
 #1666
 #1677
-
-mmse_plot%>%
-  filter(idpicc==1602) #21 4 0 0 0 0 0 
+#1300
 
 mmse_plot%>%
   filter(idpicc==1666) # 0 0
@@ -612,11 +617,10 @@ mmse_plot%>%
 mmse_plot%>%
   filter(idpicc==1677) # 19 18 10 0 0
 
+mmse_plot%>%
+  filter(idpicc==1300) # 29 28 26 25 16 13 0 0 0
 
 ggplot(data = subset(mmse_plot,study=="CamPalGN"), aes(x = followupyears, y = mmse,group=idpicc))+
-    geom_line()
-
-ggplot(data = subset(mmse_plot,study=="ICICLE"), aes(x = followupyears, y = mmse,group=idpicc))+
     geom_line()
 
 ggplot(data = subset(mmse_plot,study=="ParkWest"), aes(x = followupyears, y = mmse,group=idpicc))+
@@ -631,140 +635,35 @@ ggplot(data = subset(mmse_plot,study=="NYPUM"), aes(x = followupyears, y = mmse,
 ggplot(data = subset(mmse_plot,study=="PINE"), aes(x = followupyears, y = mmse,group=idpicc))+
     geom_line()
 
-
-
-
-
-```
-
-
-```{r create longtidude data}
-
-data.lm<-data_long%>%
-  select("study","idpicc","visityear","originalid","mmse","cens","years","followupyears")
-
-
-#remove missing mmse in the data
-
-data.lm[!is.na(data.lm$mmse),]
-
-data.lm<-data.lm[complete.cases(data.lm),]
-
-#a<-unique(data.lm$idpicc) 896 same as nrow(data.baseline)
-
-data.lm.new<-data.lm[data.lm$years!=data.lm$followupyears,]
-```
-
-
-```{r create baseline data}
-
-data.baseline<-data1.10%>%
-  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
-
-
-
-length(unique(data.baseline$idpicc)) #896
-length(unique(data.lm$idpicc)) #825
-
-data.baseline.new<-subset(data.baseline,unique(data.baseline$idpicc) %in% unique(data.lm$idpicc))
-
-#Reason why need to subset:#This is because the followupyears and years are the same in 69 patients. Patients death soon after the only time followup view at year 3.
-
-length(unique(data.baseline.new$idpicc)) #896
-length(unique(data.lm$idpicc)) #825
-
-```
-
-```{r missing pattern}
-
-data.baseline.noIC<-data.baseline.new
-
-data.baseline.noIC%>%
-  group_by(study)%>%
-  count()
-
-
-data.rename.noIC<-data.baseline.noIC%>%
-  rename("Age at baseline"=agebl, 
-         "Sex"=sex,
-         "MDS-UPDRS part3"=mdsupdrspart3bltotalconvertedasa,"Hoehn and Yahr Scale"=hybl, "Smoking"=smoking,
-         "Hallucinations"=hallucinationsindex,"Cognitive symptoms"= cognitiveindex
-         ) #
-
-explanatory<-c("Smoking","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
-dependent<- c("cens","tt") #"Smoking"
-
-mispattern<-data.rename.noIC %>% 
-  missing_pattern(explanatory)
-
-#---check how many missing at least one---
-
-#colnames(data.baseline.noIC)
-
-#nrow(data.baseline.noIC[complete.cases(data.baseline.noIC[,7:10]),]) 
-
-```
-
-```{r age10}
-
-data.baseline.new$age10<-data.baseline.new$agebl/10
-
-data.baseline.new$mdsupdrs3.10<-data.baseline.new$mdsupdrspart3bltotalconvertedasa/10
-
-```
-
-```{r just one study for try}
-
-data.lm.cam<-data.lm.new%>%
-  filter(study=="CamPalGN")
-
-data.baseline.cam<-data.baseline.new%>%
-  filter(study=="CamPalGN")
-
-
-length(unique(data.baseline.cam$idpicc)) #119
-length(unique(data.lm.cam$idpicc)) #118
-
-
-unique(data.baseline.cam$idpicc)
-unique(data.lm.cam$idpicc)
-
-
-data.baseline.cam.new<-subset(data.baseline.cam,unique(data.baseline.cam$idpicc) %in% unique(data.lm.cam$idpicc))
-
-length(unique(data.baseline.cam.new$idpicc)) #118
-length(unique(data.lm.cam$idpicc)) #118
-
-
-baseline.cox.cam<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.cam.new, x = TRUE,model = TRUE)
-
-lmeFit.cam<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data.lm.cam)
-
-jointFit.cam<-jm(baseline.cox.cam, lmeFit.cam, time_var = "followupyears")
-
-summary(jointFit.cam)
 ```
 
 
 ```{r all study model}
 
-length(unique(data.baseline.new$idpicc)) #825
-length(unique(data.lm$idpicc)) #825
+#Because joint model is independent individual, so I don't think it need to strata.
 
-baseline.cox<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.new, x = TRUE,model = TRUE)
+baseline.cox<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.1, x = TRUE,model = TRUE)
 
-lmeFit<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data.lm)
-
+lmeFit<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data_long.1)
 
 jointFit<-jm(baseline.cox, lmeFit, time_var = "followupyears")
 
-#I think it didn't need to strata because joint model, all individual are independent. 
-
 summary(jointFit)
+
 ```
 
-```{r }
+```{r Note for next step}
 
-#check the 71 patients to see what's wrong with them and why it happens?
+# Need to find a Linear mixed model to fit MMSE
+
+#Need to create another 7 dataset and rerun the model for 7 times. 
+
+#This file should be the file to create 8 datasets. 
+
+#Re run the imputation, to see if the cogntive index is yes and no will that be better?
+
+#Put the model in the next file. 
+
+#Need to think about how to do the rubin's rule.
 
 ```
