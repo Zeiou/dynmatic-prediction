@@ -428,65 +428,103 @@ for (i in 1:8) {
 ```
 
 
-```{r change long format (longitudinal) for data.imp1}
+```{r change long format (longitudinal) for data.imp1-8}
 
 #-----create follow-up times in years----
 
-# Define the variable names
-year_names <- paste0("year", 1:15)
+# List of dataset names
+dataset_names <- c("data.imp1","data.imp2", "data.imp3", "data.imp4", "data.imp5", "data.imp6", "data.imp7", "data.imp8")
 
-# Convert year columns and baseline visit year to numeric
-data.imp1[, paste0("datevisityr", 1:15)] <- lapply(data.imp1[, paste0("datevisityr", 1:15)], as.Date,format="%Y-%m-%d")
-data.imp1$datevisitbl <- as.Date(data.imp1$datevisitbl,format="%Y-%m-%d")
-
-# Create new variables using a loop
-for (i in 1:15) {
-  # Calculate the difference between the year and baseline visit year
-  year <- as.numeric(data.imp1[[paste0("datevisityr", i)]] - data.imp1$datevisitbl)/365.25
+# Loop through each dataset
+for (name in dataset_names) {
+  # Get the dataset
+  dataset <- get(name)
   
-  # Assign the calculated values to a new variable
+  # Convert columns with "datevisityr" prefix to Date format
+  year_names <- paste0("datevisityr", 1:15)
+  dataset[, year_names] <- lapply(dataset[, year_names], as.Date, format = "%Y-%m-%d")
   
-  data.imp1[[year_names[i]]] <- year
+  # Convert 'datevisitbl' column to Date format
+  dataset$datevisitbl <- as.Date(dataset$datevisitbl, format = "%Y-%m-%d")
+  
+  # Calculate year differences and create new variables
+  year_names2 <- paste0("year", 1:15)
+  for (i in 1:15) {
+    year <- as.numeric(dataset[[paste0("datevisityr", i)]] - dataset$datevisitbl) / 365.25
+    dataset[[year_names2[i]]] <- year
+  }
+  
+  # Update the dataset in the environment
+  assign(name, dataset)
 }
 
-#head(data.imp1)
 #colnames(data.imp1)
 #colnames(data.imp1[,c(1:30,46:65)])
 
-data.imp1<-data.imp1[,c(1:30,46:65)]
+for (name in dataset_names) {
+  # Get the dataset
+  dataset <- get(name)
+  # Select specific columns
+  dataset <- dataset[, c(1:30, 46:65)]
+  
+  # Update the dataset in the environment
+  assign(name, dataset)
+}
 
 #----create year follow-up----
 
-years_long.1<-data.imp1%>%
-  pivot_longer(
-    cols = `year1`:`year15`,
-    names_to = "visityear",
-    values_to = "followupyears",
-    values_transform = ~ as.numeric(gsub(",", "", .x)),
-    values_drop_na = T
-  )
+# Loop through each dataset
+for (i in seq_along(dataset_names)) {
+  # Get the dataset
+  dataset <- get(dataset_names[i])
+  
+  # Perform pivot_longer operation
+  long_dataset <- dataset %>%
+    pivot_longer(
+      cols = `year1`:`year15`,
+      names_to = "visityear",
+      values_to = "followupyears",
+      values_transform = ~ as.numeric(gsub(",", "", .x)),
+      values_drop_na = TRUE
+    )
+  
+  # Assign the result to the years_long dataset
+  assign(paste0("years_long.", i), long_dataset)
+}
 
 
 
-#change mmseyr to year1 
+#change mmseyr to year1 to year12
 
-
-MMSE_data.1<-data.imp1%>%
-  select("id","clus","idpicc","originalid","study","mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total")
-
-colnames(MMSE_data.1)[7:18]<-c("year1","year2","year3","year4",
-                          "year5","year6","year7","year8",
-                          "year9","year10","year11","year12")
-
-mmse_long.1<-MMSE_data.1%>%
-  pivot_longer(
-    cols = `year1`:`year12`,
-    names_to = "visityear",
-    values_to = "mmse",
-    values_transform = ~ as.numeric(gsub(",", "", .x)),
-    values_drop_na = T
-  )
-
+for (i in seq_along(dataset_names)) {
+  # Get the dataset
+  dataset <- get(dataset_names[i])
+  
+  # Select specific columns
+  MMSE_data <- dataset %>%
+    select("id", "clus", "idpicc", "originalid", "study", "mmsebltotal",
+           "mmseyr1total", "mmseyr2total", "mmseyr3total", "mmseyr4total",
+           "mmseyr5total", "mmseyr6total", "mmseyr7total", "mmseyr8total",
+           "mmseyr9total", "mmseyr10total", "mmseyr11total", "mmseyr12total")
+  
+  # Rename selected columns
+  colnames(MMSE_data)[7:18] <- c("year1", "year2", "year3", "year4",
+                                 "year5", "year6", "year7", "year8",
+                                 "year9", "year10", "year11", "year12")
+  
+  # Perform pivot_longer operation
+  mmse_long <- MMSE_data %>%
+    pivot_longer(
+      cols = `year1`:`year12`,
+      names_to = "visityear",
+      values_to = "mmse",
+      values_transform = ~ as.numeric(gsub(",", "", .x)),
+      values_drop_na = TRUE
+    )
+  
+  # Assign the result to the mmse_long dataset
+  assign(paste0("mmse_long.", i), mmse_long)
+}
 
 ```
 
@@ -514,6 +552,41 @@ data_long.1<-merge(years_long.new.1, mmse_long.new.1, by = c("id","study","idpic
 
 data_long.1<-data_long.1[order(data_long.1$id,data_long.1$visityear), ]
 
+
+
+
+# List of dataset indices
+dataset_indices <- 1:8
+
+for (i in dataset_indices) {
+  # Get the years_long dataset
+  years_long_data <- get(paste0("years_long.", i))
+  
+  # Select specific columns
+  years_long_selected <- years_long_data %>%
+    select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl",
+           "smoking", "mdsupdrspart3bltotalconvertedasa", "hallucinationsindex",
+           "cognitiveindex", "cens", "years", "followupyears", "visityear")
+  
+  # Get the mmse_long dataset
+  mmse_long_data <- get(paste0("mmse_long.", i))
+  
+  # Select specific columns
+  mmse_long_selected <- mmse_long_data %>%
+    select("id", "study", "idpicc", "visityear", "mmse")
+  
+  # Merge years_long and mmse_long datasets
+  data_long <- merge(years_long_selected, mmse_long_selected,
+                     by = c("id", "study", "idpicc", "visityear"),
+                     all.x = TRUE, all.y = TRUE)
+  
+  # Order the merged dataset
+  data_long <- data_long[order(data_long$id, data_long$visityear), ]
+  
+  # Assign the result to the data_long dataset
+  assign(paste0("data_long.", i), data_long)
+}
+
 ```
 
 ```{r check missing age in longtitude datasets}
@@ -538,11 +611,22 @@ data_long.1%>%
 
 #Due to the data just medical records not real follow-up we remove it
 
-data_long.1<-data_long.1[!is.na(data_long.1$agebl),]
+#data_long.1<-data_long.1[!is.na(data_long.1$agebl),]
+
+for (i in 1:8) {
+  # Get the data_long dataset
+  data_long <- get(paste0("data_long.", i))
+  
+  # Remove rows with NA values in agebl column
+  data_long_cleaned <- data_long[!is.na(data_long$agebl), ]
+  
+  # Assign the cleaned dataset back to the environment
+  assign(paste0("data_long.", i), data_long_cleaned)
+}
 
 #----check sex----
 
-data_long.1%>%
+data_long.5%>%
   group_by(study)%>%
   count(is.na(sex))
 
@@ -556,13 +640,48 @@ data_long.1%>%
 data_long.1<-data_long.1[!is.na(data_long.1$mmse),]
 
 
+for (i in 1:8) {
+  # Get the data_long dataset
+  data_long <- get(paste0("data_long.", i))
+  
+  # Remove rows with NA values in agebl column
+  data_long_cleaned <- data_long[!is.na(data_long$mmse), ]
+  
+  # Assign the cleaned dataset back to the environment
+  assign(paste0("data_long.", i), data_long_cleaned)
+}
+
 #unique(data_long.1$id) 896 same as nrow(data.baseline)
 
-data_long.1<-data_long.1[data_long.1$years!=data_long.1$followupyears,]
+#data_long.1<-data_long.1[data_long.1$years!=data_long.1$followupyears,]
+
+
+for (i in 1:8) {
+  # Get the data_long dataset
+  data_long <- get(paste0("data_long.", i))
+  
+  # Remove rows with NA values in agebl column
+  data_long_cleaned <- data_long[!is.na(data_long$agebl), ]
+  
+  # Assign the cleaned dataset back to the environment
+  assign(paste0("data_long.", i), data_long_cleaned)
+}
+
+
+for (i in 1:8) {
+  # Get the data_long dataset
+  data_long <- get(paste0("data_long.", i))
+  
+  # Remove rows where years is not equal to followupyears
+  data_long_cleaned <- data_long[data_long$years != data_long$followupyears, ]
+  
+  # Assign the cleaned dataset back to the environment
+  assign(paste0("data_long.", i), data_long_cleaned)
+}
 
 ```
 
-```{r create baseline data}
+```{r create baseline data1}
 
 data.baseline.1<-data.imp1%>%
   select("id","study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
@@ -570,100 +689,55 @@ data.baseline.1<-data.imp1%>%
 data.baseline.1$age10<-data.baseline.1$agebl/10
 
 data.baseline.1$mdsupdrs3.10<-data.baseline.1$mdsupdrspart3bltotalconvertedasa/10
+
+
+# Loop through each dataset
+for (i in seq_along(dataset_names)) {
+  # Get the dataset
+  dataset <- get(dataset_names[i])
+  
+  # Select specific columns
+  data_baseline <- dataset %>%
+    select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl", "mdsupdrspart3bltotalconvertedasa", "smoking", "hallucinationsindex", "cognitiveindex", "cens", "tt", "years")
+  
+  # Create new columns
+  data_baseline$age10 <- data_baseline$agebl / 10
+  data_baseline$mdsupdrs3.10 <- data_baseline$mdsupdrspart3bltotalconvertedasa / 10
+  
+  # Assign the result to the data_baseline dataset
+  assign(paste0("data.baseline.", i), data_baseline)
+}
 ```
 
-```{r match longtidue data with baseline}
+```{r match longtidue data with baseline1}
 
 #If patients only had one follow-up, which mean the follow-up equal to the event year, then need to be removed. 
 
 setdiff(unique(data.baseline.1$id),unique(data_long.1$id)) #65 182 351 689 737 839
 
-data.baseline.1<-data.baseline.1[data.baseline.1$id!=65,]
-data.baseline.1<-data.baseline.1[data.baseline.1$id!=182,]
-data.baseline.1<-data.baseline.1[data.baseline.1$id!=351,]
-data.baseline.1<-data.baseline.1[data.baseline.1$id!=689,]
-data.baseline.1<-data.baseline.1[data.baseline.1$id!=737,]
-data.baseline.1<-data.baseline.1[data.baseline.1$id!=839,]
+
+# List of dataset names
+dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8")
+
+# List of ids to be removed
+ids_to_remove <- c(65, 182, 351, 689, 737, 839)
+
+# Loop through each dataset
+for (i in seq_along(dataset_names)) {
+  # Get the dataset
+  dataset <- get(dataset_names[i])
+  
+  # Remove specific ids from the dataset
+  for (id in ids_to_remove) {
+    dataset <- dataset[dataset$id != id, ]
+  }
+  
+  # Assign the result to the output dataset
+  assign(dataset_names[i], dataset)
+}
+
 
 ```
 
 
-```{r check longitudinal outcome mmse}
 
-data_plot<-data_long.1[order(data_long.1$followupyears), ]
-
-mmse_plot<-data_plot%>%
-   select("study","id","idpicc","followupyears","visityear","mmse")
-
-mmse_plot<-mmse_plot%>%
-  arrange(id,followupyears)
-
-
-ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=id))+
-    geom_line()
-
-#check the one with all zero MMSE in followup years
-
-mmse_plot%>%
-  filter(mmse==0)
-
-#1666
-#1677
-#1300
-
-mmse_plot%>%
-  filter(idpicc==1666) # 0 0
-
-mmse_plot%>%
-  filter(idpicc==1677) # 19 18 10 0 0
-
-mmse_plot%>%
-  filter(idpicc==1300) # 29 28 26 25 16 13 0 0 0
-
-ggplot(data = subset(mmse_plot,study=="CamPalGN"), aes(x = followupyears, y = mmse,group=idpicc))+
-    geom_line()
-
-ggplot(data = subset(mmse_plot,study=="ParkWest"), aes(x = followupyears, y = mmse,group=idpicc))+
-    geom_line()
-
-ggplot(data = subset(mmse_plot,study=="PICNICS"), aes(x = followupyears, y = mmse,group=idpicc))+
-    geom_line()
-
-ggplot(data = subset(mmse_plot,study=="NYPUM"), aes(x = followupyears, y = mmse,group=idpicc))+
-    geom_line()
-
-ggplot(data = subset(mmse_plot,study=="PINE"), aes(x = followupyears, y = mmse,group=idpicc))+
-    geom_line()
-
-```
-
-
-```{r all study model}
-
-#Because joint model is independent individual, so I don't think it need to strata.
-
-baseline.cox<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.1, x = TRUE,model = TRUE)
-
-lmeFit<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data_long.1)
-
-jointFit<-jm(baseline.cox, lmeFit, time_var = "followupyears")
-
-summary(jointFit)
-
-```
-
-```{r Note for next step}
-
-# Need to find a Linear mixed model to fit MMSE
-
-#Need to create another 7 dataset and rerun the model for 7 times. 
-
-#This file should be the file to create 8 datasets. 
-
-#Re run the imputation, to see if the cogntive index is yes and no will that be better?
-
-#Put the model in the next file. 
-
-#Need to think about how to do the rubin's rule.
-
-```

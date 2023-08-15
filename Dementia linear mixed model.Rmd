@@ -1,0 +1,79 @@
+---
+title: "Dementia linear mixed model"
+output: html_document
+date: "2023-08-08"
+---
+
+```{r check longitudinal outcome mmse}
+
+data_plot<-data_long.1[order(data_long.1$followupyears), ]
+
+mmse_plot<-data_plot%>%
+   select("study","id","idpicc","followupyears","visityear","mmse")
+
+mmse_plot<-mmse_plot%>%
+  arrange(id,followupyears)
+
+
+ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=id))+
+    geom_line()
+
+#check the one with all zero MMSE in followup years
+
+mmse_plot%>%
+  filter(mmse==0)
+
+#1666
+#1677
+#1300
+
+mmse_plot%>%
+  filter(idpicc==1666) # 0 0
+
+mmse_plot%>%
+  filter(idpicc==1677) # 19 18 10 0 0
+
+mmse_plot%>%
+  filter(idpicc==1300) # 29 28 26 25 16 13 0 0 0
+
+ggplot(data = subset(mmse_plot,study=="CamPalGN"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="ParkWest"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="PICNICS"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="NYPUM"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+ggplot(data = subset(mmse_plot,study=="PINE"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()
+
+```
+
+
+```{r all study model}
+
+#Because joint model is independent individual, so I don't think it need to strata.
+
+baseline.cox<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.1, x = TRUE,model = TRUE)
+
+lmeFit<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data_long.1)
+
+jointFit<-jm(baseline.cox, lmeFit, time_var = "followupyears")
+
+summary(jointFit)
+
+```
+
+```{r Note for next step}
+
+# Need to find a Linear mixed model to fit MMSE
+
+#Re run the imputation, to see if the cogntive index is yes and no will that be better?
+
+#Need to think about how to do the rubin's rule.
+
+```
