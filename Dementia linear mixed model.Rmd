@@ -95,17 +95,72 @@ Mlme2.1<-lme(mmse~ followupyears, random = ~1 | idpicc, data=data_long.1)
 
 summary(Mlme2.1) #21349.39 21374.4
 
+
+#random intercept for study
+
+Mlme1.1<-lme(mmse~ followupyears, random = ~1 | study, data=data_long.1)
+
+#random slope for 
+
+Mlme1.1<-lme(mmse~ followupyears, random = ~1 + followupyears | study, data=data_long.1)
+
+
+#random intercept for patients
+
+
+Mlme3.1<-lme(mmse~ followupyears, random = ~ 1 | idpicc, data=data_long.1)
+
+summary(Mlme1.1) #random intecept for study
+summary(Mlme3.1) #random intercept for patients
+summary(Mlme4.1) #random intercept for patients and random slope for followupyears
+summary(Mlme5.1) #random intercept for patients
+
+
+
+
+#random slope for followupyears and random slope for patients
+
+Mlme4.1<-lme(mmse~ followupyears , random = ~ followupyears | idpicc, data=data_long.1)
+summary(Mlme4.1) #19644.03 19681.55
+
+#mmse outcome, study as factor, followupyears
+
+
+Mlme5.1<-lme(mmse~ followupyears +study , random = ~ followupyears | idpicc, data=data_long.1)
+summary(Mlme5.1)
+
+
+
 ```
+
+
+```{r }
+#random intercept for study, cos for new patients it will hard to predict
+
+#Try to add sex age in mmse model
+
+
+```
+
+
 
 
 ```{r Random intercept and random slope model}
 
 Mlme3.1<-lme(mmse~ followupyears, random = ~ followupyears | idpicc, data=data_long.1)
-summary(Mlme3.1) #19644.03 19681.55
+summary(Mlme3.1) 
 
 
 
+#The problme is if use study as random slope then it won't work
 
+#Think about idpicc and study
+
+
+
+try<-lme(mmse~ followupyears, random = ~ idpicc | study, data=data_long.1)
+
+summary(try)
 
 ```
 
@@ -114,15 +169,39 @@ summary(Mlme3.1) #19644.03 19681.55
 
 #Because joint model is independent individual, so I don't think it need to strata.
 
-baseline.cox<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.1, x = TRUE,model = TRUE)
+baseline.cox<-coxph(Surv(years,cens)~age10+sex+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.1, x = TRUE,model = TRUE)
 
-lmeFit<- lme(mmse~ followupyears, random = ~ followupyears | idpicc, data = data_long.1)
+summary(baseline.cox)
 
-summary(lmeFit)
+basehaz(baseline.cox)
+
+
+lmeFit<- lme(mmse~ followupyears, random = ~ agebl+sex+mdsupdrspart3bltotalconvertedasa+followupyears | idpicc, data = data_long.1)
+
+#summary(lmeFit)
 
 jointFit<-jm(baseline.cox, lmeFit, time_var = "followupyears")
 
 summary(jointFit)
+
+
+```
+
+
+```{r }
+
+# Loop through each study to extract and plot baseline hazard
+for (study_id in study_names) {
+  study_data <- subset(data.baseline.1, study == study_id)
+  cox_model <- coxph(Surv(years, cens) ~ age10 + sex + mdsupdrs3.10 + hybl + hallucinationsindex + cognitiveindex, data = study_data, x = TRUE, model = TRUE)
+  baseline_hazard <- basehaz(cox_model)
+  baseline_hazard$hazard <- diff(c(0, baseline_hazard$hazard)) / diff(c(0, baseline_hazard$time))
+  
+  # Plot the baseline hazard for the current study
+  plot(baseline_hazard$time, baseline_hazard$hazard, type = "s", xlab = "Time", ylab = "Hazard", main = paste("Baseline Hazard - Study", study_id))
+}
+
+
 
 ```
 
