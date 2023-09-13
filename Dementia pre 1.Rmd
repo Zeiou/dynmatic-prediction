@@ -53,6 +53,8 @@ datanew<-datanew%>%
   filter(originalid!="P195")
 
 datanew[datanew$originalid=="PCP46",]
+
+
 ```
 
 ```{r select variables need}
@@ -61,10 +63,11 @@ datanew[datanew$originalid=="PCP46",]
 
 
 
+
 data1<-datanew%>%
   select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
          "smoking",
-         "mdsupdrspart3bltotalconvertedasa",
+         "mdsupdrspart3bltotalconvertedasa", "yearseducation",
          "mdsupdrsbl102hallucinations", "updrsblitem2thoughtdisorders",
          "mdsupdrsbl101cognitive","updrsblitem1intellectual",
          "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
@@ -112,25 +115,37 @@ data1$hallucinationsindex<-factor(data1$hallucinationsindex,
 
 
 
-#-----Create index for cognitive---------
+#-----Create index for cognitive (3 categories)---------
 
 #Cognitive symptoms as measured by UPDRS item 1 (intellectual impairment)/MDS-UPDRS item 1 (cognitive impairment), categorized as 0 (no cognitive symptoms), 1 (cognitive symptoms, not impairing functioning), 2+ (cognitive symptoms impairing functioning).
 
-data1$mdsupdrsbl101cognitive[data1$mdsupdrsbl101cognitive>1]<-2
-data1$updrsblitem1intellectual[data1$updrsblitem1intellectual>1]<-2
+#data1$mdsupdrsbl101cognitive[data1$mdsupdrsbl101cognitive>1]<-2
+#data1$updrsblitem1intellectual[data1$updrsblitem1intellectual>1]<-2
 
-data1<-data1 %>%
-      mutate(cognitiveindex=mdsupdrsbl101cognitive)%>%           
-      mutate(cognitiveindex=coalesce(cognitiveindex,updrsblitem1intellectual)) 
+#data1<-data1 %>%
+#      mutate(cognitiveindex=mdsupdrsbl101cognitive)%>%           
+#      mutate(cognitiveindex=coalesce(cognitiveindex,updrsblitem1intellectual)) 
 
 
 #0 is no cognitive symptoms, 1 is cognitive symptoms, not impairing functioning, 2 is cognitive symptoms impairing functioning
 
+#data1$cognitiveindex<-factor(data1$cognitiveindex,
+#                             levels = c(0,1,2),
+#                             labels = c("no cognitive symptoms", "cognitive symptoms but not impairing functioning","cognitive symptoms impairing functioning"))
+
+#------Create index for cognitive (yes/no)-------
+
+#Cognitive symptoms as measured by UPDRS item 1 (intellectual impairment)/MDS-UPDRS item 1 (cognitive impairment), categorized as 0-1 (no cognitive symptoms), >1 (cognitive symptoms)
+
+data1$mdsupdrsbl101cognitive[data1$mdsupdrsbl101cognitive>1]<-1     
+data1$updrsblitem1intellectual[data1$updrsblitem1intellectual>1]<-1
+data1<-data1 %>%
+      mutate(cognitiveindex=mdsupdrsbl101cognitive)%>%           
+      mutate(cognitiveindex=coalesce(cognitiveindex,updrsblitem1intellectual))  # 0=no,1=yes
 
 data1$cognitiveindex<-factor(data1$cognitiveindex,
-                             levels = c(0,1,2),
-                             labels = c("no cognitive symptoms", "cognitive symptoms but not impairing functioning","cognitive symptoms impairing functioning"))
-
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
 
 
 table(data1$study,data1$hallucinationsindex)
@@ -189,6 +204,9 @@ data1%>%
 data1%>%
   group_by(study)%>%
   summarise(sum(cens))
+
+
+
 ```
 
 
@@ -236,10 +254,11 @@ data.rename.noIC<-data1.10%>%
   rename("Age at baseline"=agebl, 
          "Sex"=sex,
          "MDS-UPDRS part3"=mdsupdrspart3bltotalconvertedasa,"Hoehn and Yahr Scale"=hybl, "Smoking"=smoking,
+         "Years of education"=yearseducation,
          "Hallucinations"=hallucinationsindex,"Cognitive symptoms"= cognitiveindex
          ) #
 
-explanatory<-c("Smoking","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
+explanatory<-c("Smoking","Years of education","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
 dependent<- c("cens","tt") #"Smoking"
 
 mispattern<-data.rename.noIC %>% 
@@ -247,11 +266,11 @@ mispattern<-data.rename.noIC %>%
 
 #---check how many missing at least one---
 
-colnames(data1.10)
+colnames(data1.10[,c(8,9,10,51,52)])
 
-nrow(data1.10[complete.cases(data1.10[,c(8,9,50,51)]),])  #825
+nrow(data1.10[complete.cases(data1.10[,c(8,9,10,51,52)]),])  #814
 
-(896-825)/896
+(896-814)/896 #0.09
 ```
 
 ```{r impute baseline data}
@@ -262,7 +281,7 @@ data1.10$cons<-1
 
 data1.10$nelsonaalen<-nelsonaalen(data1.10,years,cens) #0 is right censor,1 is event
 
-Y<- data1.10[,c("mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
+Y<- data1.10[,c("yearseducation","mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
 
 
 X<-data1.10[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
@@ -283,16 +302,17 @@ imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
 
 #par(mfrow=c(2,4))
 
-plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+
+plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["education(years),0"]),
      xlab = "Iteration number" )
 
-plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
+plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
      xlab = "Iteration number" )
 
-plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
-     xlab = "Iteration number" ) 
+plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
+     xlab = "Iteration number" )
 
-plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
      xlab = "Iteration number" ) 
 
 plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
@@ -301,11 +321,21 @@ plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking
 plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
      xlab = "Iteration number" ) 
 
+#plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+#     xlab = "Iteration number" ) 
+
+#plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+#     xlab = "Iteration number" ) 
+
+
+
 #plot trace for cov matrix element
 #imp1$collectomega[,,1] #check the row and col name
 #Category variable don't need to plot, just a straight line
 
-plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[MDS-UPDRS,1,1]^2),
+plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[education(years),1,1]^2),
+     xlab = "Iteration number" )
+plot(imp1$collectomega[2, 2, 1:5000], type = "l", ylab = expression(omega[MDS-UPDRS,1,1]^2),
      xlab = "Iteration number" )
 
 
@@ -329,16 +359,16 @@ imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov
 
 #par(mfrow=c(2,4))
 
-plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["education(years),0"]),
      xlab = "Iteration number" )
 
-plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
+plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["mdsupdrspart3,0"]),
+     xlab = "Iteration number" )
+
+plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
      xlab = "Iteration number" ) 
 
-plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
-     xlab = "Iteration number" ) 
-
-plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
      xlab = "Iteration number" ) 
 
 plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
@@ -349,8 +379,17 @@ plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking
 
 #plot trace for cov matrix element
 
-plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
+plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[education(years),1,1]^2),
      xlab = "Iteration number" )
+
+plot(imp2$collectomega[2, 2, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
+     xlab = "Iteration number" )
+
+#plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+#     xlab = "Iteration number" ) 
+
+#plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
+#     xlab = "Iteration number" ) 
 
 
 
@@ -366,7 +405,7 @@ dim(imp2$collectomega[,,1]) #degrees of freedom is 6
 l1cov.prior <- l1cov.guess*6
 
 # Perform multilevel imputation:
-imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 8,meth = "random" )  #The nimp is the precentage of missing 
+imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 9,meth = "random" )  #The nimp is the precentage of missing 
 
 
 ```
@@ -390,14 +429,13 @@ data1.10.mmse<-data1.10%>%
 
 imp3.new<-merge(imp3,data1.10.mmse,by.x = "id",by.y = "id")
 
+colnames(imp3.new)
 ```
 
 
 ```{r check the imputation set}
 
-imp3.new[imp3.new$mdsupdrspart3bltotalconvertedasa<0,]#only one negative patients idpicc 633
-
-imp3.new$mdsupdrspart3bltotalconvertedasa[imp3.new$idpicc==633 & imp3.new$Imputation==6]<-0
+#summary(imp3.new) #All summary value looks good, no negative
 
 imp3.new$age10<-imp3.new$agebl/10
 
@@ -408,16 +446,16 @@ summary(imp3.new$mdsupdrspart3bltotalconvertedasa)
 data.imp<-imputationList(split(imp3.new, imp3.new$Imputation)[-1])
 ```
 
-```{r extract 8 imputed dataset}
+```{r extract 9 imputed dataset}
  
 #There will be need to create 8 different imputation in baseline and longitudinal
 
-data.imp.new_names <- paste("data.imp",1:8,sep="")  # create names first
+data.imp.new_names <- paste("data.imp",1:9,sep="")  # create names first
 
 imp.list<-data.imp[["imputations"]]
 
 # Loop through the indices of the list
-for (i in 1:8) {
+for (i in 1:9) {
   # Extract the dataset based on the index
   extracted_dataset <- imp.list[[i]]
   
@@ -428,12 +466,12 @@ for (i in 1:8) {
 ```
 
 
-```{r change long format (longitudinal) for data.imp1-8}
+```{r change long format (longitudinal) for data.imp1-9}
 
 #-----create follow-up times in years----
 
 # List of dataset names
-dataset_names <- c("data.imp1","data.imp2", "data.imp3", "data.imp4", "data.imp5", "data.imp6", "data.imp7", "data.imp8")
+dataset_names <- c("data.imp1","data.imp2", "data.imp3", "data.imp4", "data.imp5", "data.imp6", "data.imp7", "data.imp8","data.imp9")
 
 # Loop through each dataset
 for (name in dataset_names) {
@@ -453,19 +491,18 @@ for (name in dataset_names) {
     year <- as.numeric(dataset[[paste0("datevisityr", i)]] - dataset$datevisitbl) / 365.25
     dataset[[year_names2[i]]] <- year
   }
-  
   # Update the dataset in the environment
   assign(name, dataset)
 }
 
 #colnames(data.imp1)
-#colnames(data.imp1[,c(1:30,46:65)])
+#colnames(data.imp1[,c(1:31,47:66)])
 
 for (name in dataset_names) {
   # Get the dataset
   dataset <- get(name)
   # Select specific columns
-  dataset <- dataset[, c(1:30, 46:65)]
+  dataset <- dataset[, c(1:31, 47:66)]
   
   # Update the dataset in the environment
   assign(name, dataset)
@@ -538,7 +575,7 @@ nrow(mmse_long.1)   #3905
 years_long.new.1<-years_long.1%>%
   select("id","study","idpicc","originalid",
          "agebl","sex","hybl",
-         "smoking",
+         "smoking","yearseducation",
          "mdsupdrspart3bltotalconvertedasa",
          "hallucinationsindex",
          "cognitiveindex",
@@ -556,7 +593,7 @@ data_long.1<-data_long.1[order(data_long.1$id,data_long.1$visityear), ]
 
 
 # List of dataset indices
-dataset_indices <- 1:8
+dataset_indices <- 1:9
 
 for (i in dataset_indices) {
   # Get the years_long dataset
@@ -565,6 +602,7 @@ for (i in dataset_indices) {
   # Select specific columns
   years_long_selected <- years_long_data %>%
     select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl",
+           "yearseducation",
            "smoking", "mdsupdrspart3bltotalconvertedasa", "hallucinationsindex",
            "cognitiveindex", "cens", "years", "followupyears", "visityear")
   
@@ -613,7 +651,7 @@ data_long.1%>%
 
 #data_long.1<-data_long.1[!is.na(data_long.1$agebl),]
 
-for (i in 1:8) {
+for (i in 1:9) {
   # Get the data_long dataset
   data_long <- get(paste0("data_long.", i))
   
@@ -640,7 +678,7 @@ data_long.5%>%
 data_long.1<-data_long.1[!is.na(data_long.1$mmse),]
 
 
-for (i in 1:8) {
+for (i in 1:9) {
   # Get the data_long dataset
   data_long <- get(paste0("data_long.", i))
   
@@ -656,7 +694,7 @@ for (i in 1:8) {
 #data_long.1<-data_long.1[data_long.1$years!=data_long.1$followupyears,]
 
 
-for (i in 1:8) {
+for (i in 1:9) {
   # Get the data_long dataset
   data_long <- get(paste0("data_long.", i))
   
@@ -668,7 +706,7 @@ for (i in 1:8) {
 }
 
 
-for (i in 1:8) {
+for (i in 1:9) {
   # Get the data_long dataset
   data_long <- get(paste0("data_long.", i))
   
@@ -684,7 +722,7 @@ for (i in 1:8) {
 ```{r create baseline data1}
 
 data.baseline.1<-data.imp1%>%
-  select("id","study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
+  select("id","study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","yearseducation","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
 
 data.baseline.1$age10<-data.baseline.1$agebl/10
 
@@ -698,7 +736,7 @@ for (i in seq_along(dataset_names)) {
   
   # Select specific columns
   data_baseline <- dataset %>%
-    select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl", "mdsupdrspart3bltotalconvertedasa", "smoking", "hallucinationsindex", "cognitiveindex", "cens", "tt", "years")
+    select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl", "mdsupdrspart3bltotalconvertedasa", "yearseducation","smoking", "hallucinationsindex", "cognitiveindex", "cens", "tt", "years")
   
   # Create new columns
   data_baseline$age10 <- data_baseline$agebl / 10
@@ -739,5 +777,20 @@ for (i in seq_along(dataset_names)) {
 
 ```
 
+```{r remove unused levels}
 
+levels(data.baseline.1$study)
+
+data.baseline.1$study<-droplevels(data.baseline.1$study)
+data.baseline.2$study<-droplevels(data.baseline.2$study)
+data.baseline.3$study<-droplevels(data.baseline.3$study)
+data.baseline.4$study<-droplevels(data.baseline.4$study)
+data.baseline.5$study<-droplevels(data.baseline.5$study)
+data.baseline.6$study<-droplevels(data.baseline.6$study)
+data.baseline.7$study<-droplevels(data.baseline.7$study)
+data.baseline.8$study<-droplevels(data.baseline.8$study)
+data.baseline.9$study<-droplevels(data.baseline.9$study)
+
+
+```
 

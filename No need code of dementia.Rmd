@@ -327,3 +327,78 @@ data1.10$year15<-as.numeric(as.Date(as.character(data1.10$datevisityr15), format
 
 
 ```
+
+
+
+```{r Random intercept model}
+
+#Random intercept model (each study have random intercept)
+
+class(data_long.1$study)
+
+Mlme1.1<-lme(mmse~ followupyears, random = ~1 | study, data=data_long.1)
+
+summary(Mlme1.1)
+
+F0<-fitted(Mlme1.1,level = 0) #fitted values obtained by the population model
+F1<-fitted(Mlme1.1,level = 1) #gives the within-study values
+
+
+study_colors <- c("blue", "red", "green", "purple", "pink")
+study_names<-c("CamPalGN","NYPUM","ParkWest","PICNICS","PINE")
+study_color_mapping <- setNames(study_colors, study_names)
+
+plot(sort(data_long.1$followupyears), F0 [order(data_long.1$followupyears)],lwd=2,type = "l",ylab = "mmse",xlab = "follow-up years")
+for (i in study_names) {
+  x1<-data_long.1 [data_long.1$study==i,]$followupyears
+  y1<-F1[data_long.1$study == i]
+  lines(sort(x1),y1[order(x1)],col=study_color_mapping[i],lwd=2)
+}
+
+legend("topright", legend = study_names, col=study_colors,lwd=2)
+
+
+
+#Random intercept model (each patients have random intercept)
+
+Mlme2.1<-lme(mmse~ followupyears, random = ~1 | idpicc, data=data_long.1)
+
+summary(Mlme2.1) #21349.39 21374.4
+
+
+#random intercept for study
+
+Mlme1.1<-lme(mmse~ followupyears, random = ~1 | study, data=data_long.1)
+
+#random slope for 
+
+Mlme1.1<-lme(mmse~ followupyears, random = ~1 + followupyears | study, data=data_long.1)
+
+
+#random intercept for patients
+
+
+Mlme3.1<-lme(mmse~ followupyears, random = ~ 1 | idpicc, data=data_long.1)
+
+summary(Mlme1.1) #random intecept for study
+summary(Mlme3.1) #random intercept for patients
+summary(Mlme4.1) #random intercept for patients and random slope for followupyears
+summary(Mlme5.1) #random intercept for patients
+
+
+
+
+#random slope for followupyears and random slope for patients
+
+Mlme4.1<-lme(mmse~ followupyears , random = ~ followupyears | idpicc, data=data_long.1)
+summary(Mlme4.1) #19644.03 19681.55
+
+#mmse outcome, study as factor, followupyears
+
+
+Mlme5.1<-lme(mmse~ followupyears +study , random = ~ followupyears | idpicc, data=data_long.1)
+summary(Mlme5.1)
+
+
+
+```
