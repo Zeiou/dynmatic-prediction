@@ -27,7 +27,7 @@ library(png)
 library(grid)
 library(haven) #read_dta
 library(nlme)
-library("JMbayes2")
+library(JMbayes2)
 ```
 
 ```{r data}
@@ -753,9 +753,8 @@ for (i in seq_along(dataset_names)) {
 
 setdiff(unique(data.baseline.1$id),unique(data_long.1$id)) #65 182 351 689 737 839
 
-
 # List of dataset names
-dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8")
+dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8","data.baseline.9")
 
 # List of ids to be removed
 ids_to_remove <- c(65, 182, 351, 689, 737, 839)
@@ -773,7 +772,6 @@ for (i in seq_along(dataset_names)) {
   # Assign the result to the output dataset
   assign(dataset_names[i], dataset)
 }
-
 
 ```
 
