@@ -154,6 +154,10 @@ table(data1$study,data1$cognitiveindex)
 #ICICLE missing all 
 
 #If to include those two predictors, we need to exclude ICICLE
+
+data1%>%
+  group_by(study)%>%
+  count()
 ```
 
 
@@ -166,7 +170,7 @@ data1<-data1 %>%
   mutate(t=coalesce(t,datelastknownalive))%>%
   mutate(t=coalesce(t,datelastseen))
 
-#if patients have the date of death then t is the date of dementia. If patients without date of dementia, then the censoring date will be the date of last know alive. If patients without the date of last know alive then the censoring date will be the date last seen. Because I found some patients with date of lost is much later than the last seen, but the measurement stop in the last seen visiting year.
+#if patients have the date of dementia then t is the date of dementia. If patients without date of dementia, then the censoring date will be the date of last know alive. If patients without the date of last know alive then the censoring date will be the date last seen. Because I found some patients with date of lost is much later than the last seen, but the measurement stop in the last seen visiting year.
 
 
 #sum(is.na(data2$t)) # 0 missing
@@ -193,6 +197,10 @@ data1%>%
   group_by(study)%>%
   count()          #PINE 62, already has dementia before baseline visit
 
+
+data1[is.na(data1$years),] #One patients in PICNICS, idpicc, PCP66, only had baseline visit time and time of death, no followup information. 
+
+
 data1<-data1%>%
   filter(data1$years>0) #1080 removed 142 patients 
 
@@ -206,7 +214,13 @@ data1%>%
   summarise(sum(cens))
 
 
+data1%>%
+  group_by(study)%>%
+  count()
 
+21+8+4+29+14+62 #Without ICICE, so CamPalGN n=21; NYPUM n=8; ParkWest n=4; PICNICS=29+1; PINE n=76
+
+1080-155 #Without ICICLE, so 927
 ```
 
 
@@ -225,7 +239,13 @@ data.nommse.follow%>%
 data1<-data1%>%
   filter(!is.na(mmseyr1total)|!is.na(mmseyr2total)|!is.na(mmseyr3total)|!is.na(mmseyr4total)|!is.na(mmseyr5total)|!is.na(mmseyr6total)|!is.na(mmseyr7total)|!is.na(mmseyr8total)|!is.na(mmseyr9total)|!is.na(mmseyr10total)|!is.na(mmseyr11total)|!is.na(mmseyr12total))
 
+6+3+19+5 #Without ICICIE 
 
+data1%>%
+  group_by(study)%>%
+  count()
+
+119+130+185+230+275 #Without ICICLE 939
 ```
 
 
@@ -244,6 +264,11 @@ data1.10.all<-subset(data1.temp10, timegroup == 1) #only the first 10 year
 
 data1.10<-data1.10.all%>%
   filter(study!="ICICLE")
+
+data1.10.all%>%
+  group_by(study)%>%
+  count()
+
 ```
 
 
@@ -495,8 +520,7 @@ for (name in dataset_names) {
   assign(name, dataset)
 }
 
-#colnames(data.imp1)
-#colnames(data.imp1[,c(1:31,47:66)])
+
 
 for (name in dataset_names) {
   # Get the dataset
@@ -574,7 +598,7 @@ nrow(mmse_long.1)   #3905
 
 years_long.new.1<-years_long.1%>%
   select("id","study","idpicc","originalid",
-         "agebl","sex","hybl",
+         "agebl","sex","hybl","Imputation",
          "smoking","yearseducation",
          "mdsupdrspart3bltotalconvertedasa",
          "hallucinationsindex",
@@ -602,7 +626,7 @@ for (i in dataset_indices) {
   # Select specific columns
   years_long_selected <- years_long_data %>%
     select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl",
-           "yearseducation",
+           "yearseducation","Imputation",
            "smoking", "mdsupdrspart3bltotalconvertedasa", "hallucinationsindex",
            "cognitiveindex", "cens", "years", "followupyears", "visityear")
   
@@ -722,7 +746,7 @@ for (i in 1:9) {
 ```{r create baseline data1}
 
 data.baseline.1<-data.imp1%>%
-  select("id","study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","yearseducation","smoking","hallucinationsindex","cognitiveindex","cens","tt","years")
+  select("id","study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","yearseducation","smoking","hallucinationsindex","cognitiveindex","cens","tt","years","Imputation")
 
 data.baseline.1$age10<-data.baseline.1$agebl/10
 
@@ -736,7 +760,7 @@ for (i in seq_along(dataset_names)) {
   
   # Select specific columns
   data_baseline <- dataset %>%
-    select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl", "mdsupdrspart3bltotalconvertedasa", "yearseducation","smoking", "hallucinationsindex", "cognitiveindex", "cens", "tt", "years")
+    select("id", "study", "idpicc", "originalid", "agebl", "sex", "hybl", "mdsupdrspart3bltotalconvertedasa", "yearseducation","smoking", "hallucinationsindex", "cognitiveindex", "cens", "tt", "years","Imputation")
   
   # Create new columns
   data_baseline$age10 <- data_baseline$agebl / 10
@@ -773,6 +797,11 @@ for (i in seq_along(dataset_names)) {
   assign(dataset_names[i], dataset)
 }
 
+
+data.baseline.1%>%
+  group_by(study)%>%
+  count()
+
 ```
 
 ```{r remove unused levels}
@@ -792,3 +821,52 @@ data.baseline.9$study<-droplevels(data.baseline.9$study)
 
 ```
 
+```{r combine baseline dataset again to run Cox}
+
+combined_data.baseline<-rbind(data.baseline.1,data.baseline.2,data.baseline.3,data.baseline.4,data.baseline.5,data.baseline.6,data.baseline.7,data.baseline.8,data.baseline.9)
+
+imp.baseline.list<-jomo2mitml.list(combined_data.baseline)
+
+try.cox<-with(data=imp.baseline.list,coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study)),x=T,y=T)
+
+```
+
+```{r combine long data to run lme}
+
+combined_data_long<-rbind(data_long.1,data_long.2,data_long.3,data_long.4,data_long.5,data_long.6,data_long.7,data_long.8,data_long.9)
+
+imp.data_long<-jomo2mitml.list(combined_data_long)
+
+try.lme<-with(data=imp.data_long,lme(mmse~ agebl+yearseducation+followupyears, random = ~ followupyears | idpicc, data=combined_data_long))
+
+#I don't know how to put these two together.
+```
+
+
+```{r }
+
+try.lme<-lme(mmse~ agebl+yearseducation+followupyears, random = ~ followupyears | idpicc,data=combined_data_long) 
+
+try.cox<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=combined_data.baseline, x = TRUE,model = TRUE)
+
+try.cox<-with(data=imp.baseline.list,coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study)),x=T,y=T)
+
+try.cox.res<-testEstimates(try.cox)
+
+try.cox.estimate<-as.data.frame(try.cox.res[["estimates"]])
+
+try.cox.estimate$Estimate
+
+
+
+pool(try.cox)
+
+try.jm<-jm(try.cox, try.lme, time_var = "followupyears")
+
+
+
+#Error in checkForRemoteErrors(val) : 
+#3 nodes produced errors; first error: addition: incompatible matrix dimensions: 890x1 and 8010x1
+
+#The problem is in COX, The N=8010 (890*9). I need to figure out how to pool an average model from it
+```

@@ -115,50 +115,51 @@ BIC(lme.5) #19887.97
 #Choose lme.1
 
 
-lme.1.1<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.1) 
+lme.2.1<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.1) 
 
-lme.1.2<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2) 
+lme.2.2<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2) 
 
-lme.1.3<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.3) 
+lme.2.3<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.3) 
 
-lme.1.4<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.4) 
+lme.2.4<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.4) 
 
-lme.1.5<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.5) 
+lme.2.5<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.5) 
 
-lme.1.6<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.6) 
+lme.2.6<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.6) 
 
-lme.1.7<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.7) 
+lme.2.7<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.7) 
 
-lme.1.8<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.8) 
+lme.2.8<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.8) 
 
-lme.1.9<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.9) 
+lme.2.9<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.9) 
 
 ```
 
 ```{r joint model}
 
-jointFit.1<-jm(baseline.cox.1, lme.1.1, time_var = "followupyears") #it works
+jointFit.1<-jm(baseline.cox.1, lme.2.1, time_var = "followupyears") #it works
 
-jointFit.2<-jm(baseline.cox.2, lme.1.2, time_var = "followupyears") 
+jointFit.2<-jm(baseline.cox.2, lme.2.2, time_var = "followupyears") 
 
-jointFit.3<-jm(baseline.cox.3, lme.1.3, time_var = "followupyears") 
+jointFit.3<-jm(baseline.cox.3, lme.2.3, time_var = "followupyears") 
 
-jointFit.4<-jm(baseline.cox.4, lme.1.4, time_var = "followupyears") 
+jointFit.4<-jm(baseline.cox.4, lme.2.4, time_var = "followupyears") 
 
-jointFit.5<-jm(baseline.cox.5, lme.1.5, time_var = "followupyears") 
+jointFit.5<-jm(baseline.cox.5, lme.2.5, time_var = "followupyears") 
 
-jointFit.6<-jm(baseline.cox.6, lme.1.6, time_var = "followupyears") 
+jointFit.6<-jm(baseline.cox.6, lme.2.6, time_var = "followupyears") 
 
-jointFit.7<-jm(baseline.cox.7, lme.1.7, time_var = "followupyears")
+jointFit.7<-jm(baseline.cox.7, lme.2.7, time_var = "followupyears")
 
-jointFit.8<-jm(baseline.cox.8, lme.1.8, time_var = "followupyears") 
+jointFit.8<-jm(baseline.cox.8, lme.2.8, time_var = "followupyears") 
 
-jointFit.9<-jm(baseline.cox.9, lme.1.9, time_var = "followupyears") 
+jointFit.9<-jm(baseline.cox.9, lme.2.9, time_var = "followupyears") 
 
-#summary(jointFit.9)
+
+
 ```
 
-```{r Rubin´s Rules}
+```{r Rubin´s Rules coefficent,sd,se}
 
 # Create a list of the fitted joint models
 joint_models_list <- list(jointFit.1, jointFit.2, jointFit.3, jointFit.4, 
@@ -222,7 +223,7 @@ for (j in seq_along(coefficients_list[[1]])) {
 pooled_coefficients
 
 
-#-----Calculate the within-imputation variance (W)-----
+#-----Calculate the within-imputation variance (W) standard deviations-----
 
 
 # Calculate the number of predictors
@@ -234,7 +235,7 @@ within_imputation_variances <- numeric(num_predictors)
 # Loop through each predictor (parameter)
 for (j in 1:num_predictors) {
   # Calculate the within-imputation variance (W) for the current predictor
-  within_imputation_variances[j] <- sum(sapply(sd_list, function(se) se[j]^2)) / 9
+  within_imputation_variances[j] <- sum(sapply(sd_list, function(sd) sd[j]^2)) / 9
 }
 
 
@@ -262,7 +263,7 @@ for (j in seq_along(coefficients_list[[1]])) {
 }
 
 
-#------Calculate the total variance----
+#------Pooled standard deviations----
 
 # Initialize a vector to store the total variances (T) for each predictor
 total_variances <- numeric(length(coefficients_list[[1]]))
@@ -277,25 +278,122 @@ for (j in seq_along(coefficients_list[[1]])) {
 # Calculate the standard deviations (SD) for each predictor from the total variances
 pooled_sd <- sqrt(total_variances)
 
-```
 
+
+
+#-----Calculate the within-imputation variance (W) Standard errors-----
+
+
+# Calculate the number of predictors
+num_predictors <- length(coefficients_list[[1]])
+
+# Initialize a vector to store the within-imputation variances (W) for each predictor
+within_imputation_variances_se <- numeric(num_predictors)
+
+# Loop through each predictor (parameter)
+for (j in 1:num_predictors) {
+  # Calculate the within-imputation variance (W) for the current predictor
+  within_imputation_variances_se[j] <- sum(sapply(se_list, function(se) se[j]^2)) / 9
+}
+
+
+#------Pooled standard errors----
+
+# Initialize a vector to store the total variances (T) for each predictor
+total_variances_se <- numeric(length(coefficients_list[[1]]))
+
+# Loop through each predictor
+for (j in seq_along(coefficients_list[[1]])) {
+  # Calculate the total variance (T) for the current predictor
+  total_variances_se[j] <- within_imputation_variances_se[j]+(1+1/9)*between_imputation_variances[j] 
+  #The imputation times is 9
+}
+
+# Calculate the standard deviations (SD) for each predictor from the total variances
+pooled_se <- sqrt(total_variances_se)
+
+
+
+```
 
 ```{r Summary the pool estimated}
 
-pooled_coefficients
+#pooled_coefficients
+#pooled_sd
+#pooled_se
 
-pooled_sd
+#age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex
+
+# Create a vector of predictor names
+predictor_names <- c("age10", "sex", "yearseducation", "mdsupdrs3.10", "hybl", "hallucinationsindex", "cognitiveindex")
+
+# Create a data frame with row names as predictors
+Pool_estimate <- data.frame(Predictor = predictor_names)
+
+# Add columns for pooled coefficient, pooled sd, and pooled se
+Pool_estimate$Pooled_Coefficient <- pooled_coefficients
+Pool_estimate$Pooled_SD <- pooled_sd
+Pool_estimate$Pooled_SE <- pooled_se
+
+# Display the resulting dataframe
+Pool_estimate 
 
 ```
 
 
-```{r need to figure out how to pool the estimate of mmse}
+```{r Not run need to figure out how to get the CI and pool the estimate of mmse}
+
+
+#Try to get the CI
+
+summary(jointFit.1)
+
+#degree of freedom
+
+r<-((1+1/9)*between_imputation_variances)/(within_imputation_variances)
+
+(9-1)*(1+1/r)^(2)
+
+qt(0.975,df=1265334.6818)
+qt(0.025,df=1265334.6818)
+
 
 
 ```
 
 
-```{r }
+```{r Not run list try}
+
+
+#data.baseline.list<-list(data.baseline.1,data.baseline.2,data.baseline.3,data.baseline.4,data.baseline.5,data.baseline.6,data.baseline.7,data.baseline.8,data.baseline.9)
+
+#data_long.list<-list(data_long.1,data_long.2,data_long.3,data_long.4,data_long.5,data_long.6,data_long.7,data_long.8,data_long.9)
+
+
+summary(jointFit.1)
+
+(0.8218-0.5373)/0.009693437
+
+(0.08617068+0.15618253)/ 0.00726866
+
+(0.8065-0.5295)/ 0.009693437  
+
+(0.0834+0.1627)/0.006762524
+
+
+jointFit.1[["statistics"]][["CI_upp"]]["gammas"]
+jointFit.1[["statistics"]][["Mean"]]["gammas"]
+jointFit.2[["statistics"]][["SE"]]["gammas"]
+
+summary(jointFit.2)
+
+ranef(jointFit.1)
+
+
+```
+
+
+```{r Not run}
 
 # Loop through each study to extract and plot baseline hazard
 for (study_id in study_names) {
@@ -312,12 +410,10 @@ for (study_id in study_names) {
 
 ```
 
-```{r Note for next step}
+```{r Not run Note for next step}
 
-# Need to find a Linear mixed model to fit MMSE
+#Need to think about how to pool the average estimate
 
-#Re run the imputation, to see if the cogntive index is yes and no will that be better?
-
-#Need to think about how to do the rubin's rule.
+#Need to do
 
 ```
