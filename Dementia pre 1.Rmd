@@ -94,9 +94,18 @@ data1[data1$originalid=="PCP66",]$sex<-"male"
 data1[data1$originalid=="PCP66",]$idpicc<-1693
 
 
+#Chang smoking to yes/no as the imputation works better
+#data1$smoking<-factor(data1$smoking,
+#                    levels = c(1,2,3),
+#                    labels= c("current smoker","ex smoker","never smoker"))
+
+data1$smoking<-ifelse(data1$smoking<3,
+                      1,2) #then 1 and 2 will be 1, 3 will be 2
+
 data1$smoking<-factor(data1$smoking,
-                    levels = c(1,2,3),
-                    labels= c("current smoker","ex smoker","never smoker"))
+                      levels = c(1,2),
+                      labels = c("yes","no"))
+
 
 
 #------Create index for hallucinations------
@@ -275,7 +284,7 @@ data1.10.all%>%
 ```{r impute baseline data}
 #impute data first before it change to longitudinal data
 
-data.rename.noIC<-data1.10%>%
+data.rename.noIC<-data1.10%>%  #rember to change to data1.10.remove
   rename("Age at baseline"=agebl, 
          "Sex"=sex,
          "MDS-UPDRS part3"=mdsupdrspart3bltotalconvertedasa,"Hoehn and Yahr Scale"=hybl, "Smoking"=smoking,
@@ -286,16 +295,27 @@ data.rename.noIC<-data1.10%>%
 explanatory<-c("Smoking","Years of education","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
 dependent<- c("cens","tt") #"Smoking"
 
+#png("missingp.png",width = 2000,height =2000,res = 400)
+
 mispattern<-data.rename.noIC %>% 
   missing_pattern(explanatory)
+
+#dev.off()
 
 #---check how many missing at least one---
 
 colnames(data1.10[,c(8,9,10,51,52)])
 
-nrow(data1.10[complete.cases(data1.10[,c(8,9,10,51,52)]),])  #814
+nrow(data1.10[complete.cases(data1.10[,c(8,9,10,51,52)]),])  #816 in data1.10.remove 841 in data1.10.remove without smoking
 
-(896-814)/896 #0.09
+(896-816)/896 #0.09 
+
+(890-841)/890 #0.06
+
+colnames(data1.10[,c(9,10,51,52)])
+
+
+
 ```
 
 ```{r impute baseline data}
@@ -306,7 +326,7 @@ data1.10$cons<-1
 
 data1.10$nelsonaalen<-nelsonaalen(data1.10,years,cens) #0 is right censor,1 is event
 
-Y<- data1.10[,c("yearseducation","mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex","smoking")]  
+Y<- data1.10[,c("smoking","yearseducation","mdsupdrspart3bltotalconvertedasa","hallucinationsindex","cognitiveindex")]  #
 
 
 X<-data1.10[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
@@ -327,7 +347,6 @@ imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
 
 #par(mfrow=c(2,4))
 
-
 plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["education(years),0"]),
      xlab = "Iteration number" )
 
@@ -343,8 +362,8 @@ plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cogniti
 plot(imp1$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
      xlab = "Iteration number" ) 
 
-plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
-     xlab = "Iteration number" ) 
+#plot(imp1$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+#     xlab = "Iteration number" ) 
 
 #plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
 #     xlab = "Iteration number" ) 
@@ -399,8 +418,8 @@ plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cogniti
 plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
      xlab = "Iteration number" ) 
 
-plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
-     xlab = "Iteration number" ) 
+#plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+#     xlab = "Iteration number" ) 
 
 #plot trace for cov matrix element
 
@@ -409,14 +428,6 @@ plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[educat
 
 plot(imp2$collectomega[2, 2, 1:5000], type = "l", ylab = expression(omega[mdsupdrspart3,1,1]^2),
      xlab = "Iteration number" )
-
-#plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
-#     xlab = "Iteration number" ) 
-
-#plot(imp2$collectbeta[1, 5, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.2,0"]),
-#     xlab = "Iteration number" ) 
-
-
 
 #dev.off()
 
@@ -427,7 +438,7 @@ dim(imp2$collectomega[,,1]) #degrees of freedom is 6
 
 # Multiply by degrees of freedom to get scale matrix
 
-l1cov.prior <- l1cov.guess*6
+l1cov.prior <- l1cov.guess*5
 
 # Perform multilevel imputation:
 imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 9,meth = "random" )  #The nimp is the precentage of missing 
@@ -469,6 +480,18 @@ imp3.new$mdsupdrs3.10<-imp3.new$mdsupdrspart3bltotalconvertedasa/10
 summary(imp3.new$mdsupdrspart3bltotalconvertedasa)
 
 data.imp<-imputationList(split(imp3.new, imp3.new$Imputation)[-1])
+
+imp3.new%>%
+  filter(Imputation==2)%>%
+  filter(study=="PINE")%>%
+  count(hallucinationsindex)
+
+
+imp3.new%>%
+  filter(Imputation==5)%>%
+  filter(study=="PINE")%>%
+  count(hallucinationsindex)
+
 ```
 
 ```{r extract 9 imputed dataset}
@@ -821,7 +844,197 @@ data.baseline.9$study<-droplevels(data.baseline.9$study)
 
 ```
 
-```{r combine baseline dataset again to run Cox}
+```{r Characteristic baseline}
+
+
+# the id need to remove before c(65, 182, 351, 689, 737, 839)
+
+imp3.new[imp3.new$id==c(65, 182, 351, 689, 737, 839),]%>%
+  select(study,idpicc,originalid)
+
+#study      idpicc originalid
+#CamPalGN    69    244
+#NYPUM      366    337
+#ParkWest   546    B100
+#PINE       1600   P193
+#           1188   P351
+#           1271   P659
+
+data1.10.remove<-data1.10[data1.10$idpicc!=69,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=366,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=546,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1600,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1188,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1271,]
+
+
+
+data.baseline.1%>%
+  group_by(study)%>%
+  summarise(round(mean(agebl),1),round(sd(agebl),1))
+
+data.baseline.1$sex<-factor(data.baseline.1$sex,
+                    levels = c(1,2),
+                    labels= c("male","female"))
+
+table(data.baseline.1$sex)
+
+
+data.baseline.1%>%
+  group_by(study)%>%
+  summarise(round(median(hybl),1),round(quantile(hybl),1))
+
+
+data1.10.remove%>%
+  summarise(round(median(mdsupdrspart3bltotalconvertedasa,na.rm=T),1),round(quantile(mdsupdrspart3bltotalconvertedasa,na.rm=T),1))
+
+data1.10.remove%>%
+  filter(is.na(mdsupdrspart3bltotalconvertedasa))%>%
+  group_by(study)%>%
+  count()
+
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise(round(mean(yearseducation,na.rm=T),1),round(sd(yearseducation,na.rm=T),1))
+
+data1.10.remove%>%
+  filter(is.na(yearseducation))%>%
+  group_by(study)%>%
+  count()
+
+
+table(data1.10.remove$hallucinationsindex)
+  
+
+data1.10.remove%>%
+  filter(is.na(hallucinationsindex))%>%
+  group_by(study)%>%
+  count()
+
+table(data1.10.remove$study,data1.10.remove$cognitiveindex)
+
+table(data1.10.remove$cognitiveindex)
+
+data1.10.remove%>%
+  filter(is.na(cognitiveindex))%>%
+  group_by(study)%>%
+  count()
+
+data1.10.remove%>%
+  filter(is.na(smoking))%>%
+  group_by(study)%>%
+  count()
+
+table(data1.10.remove$study,data1.10.remove$smoking)
+
+
+#event
+
+data.baseline.1%>%
+  group_by(study)%>%
+  summarise(sum(cens)) # 0 is censoring
+
+data1.10.remove%>%
+  group_by(study)
+
+data%>%
+  filter(losttofollowup==1)%>%
+  filter(idpicc!=69)%>%
+  filter(idpicc!=366)%>%
+  filter(idpicc!=546)%>%
+  filter(idpicc!=1600)%>%
+  filter(idpicc!=1188)%>%
+  filter(idpicc!=1271)%>%
+  group_by(study)%>%
+  count() #need to remove study 2 cos ICICLE is not inside
+
+
+#without the date of death
+data1.10.remove%>%
+  group_by(study)%>%
+  filter(is.na(datedeath))%>%
+  count()
+
+```
+
+
+```{r KM plot}
+
+KM<-survfit(Surv(years,cens)~study,data=data1.10.remove)
+
+
+ggsurv1<-ggsurvplot(KM,
+           ylab="Cumulative probability of dementia",
+           xlab="Time to dementia",
+           legend="top",
+           surv.median.line = "hv",
+           fun="event",
+           risk.table = T,
+           risk.table.y.text.col = F,
+           risk.table.y.text = T,
+           risk.table.col = "strata",
+           linetype = "strata",
+           ggtheme = theme_bw(),
+           legend.labs=c("CamPalGN","NYPUM","ParkWest","PICNICS","PINE"))
+
+ggsurv1<-ggpar(ggsurv1, 
+      font.main = c(14, "bold"),
+      font.x = c(14, "bold"),
+      font.y = c(14, "bold"),
+      font.caption = c(14, "bold"), 
+      font.legend = c(14, "bold"))
+
+print(ggsurv1, 
+      surv.plot.height = 0.6,
+      risk.table.height = 0.4)
+
+
+png("KM1.dementia.png",width = 4000,height =3000,res = 400)
+
+print(ggsurv1, 
+      surv.plot.height = 0.7,
+      risk.table.height = 0.3)
+
+dev.off()
+
+
+```
+
+
+```{r Reverse Kaplan-Meier estimate of the median follow-up time}
+
+data1.10.remove$cens.followup<-1-data1.10.remove$cens
+reverse.KM<-survfit(Surv(years,cens.followup)~study,data=data1.10.remove)
+
+#survfit(Surv(years,cens.followup)~1,data=data1.10.remove)
+
+```
+```{r PICNICS reKM KM}
+
+PICNICS<-data1.10.remove%>%
+  filter(study=="PICNICS")
+
+PICNICS.cens<-PICNICS%>%
+  filter(cens==0)
+
+PICNICS.event<-PICNICS%>%
+  filter(cens==1)
+
+
+```
+
+
+```{r event/incidence}
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise('Incidence rate'=paste(round(sum(cens)/as.numeric(sum(years))*100,1),' per 100 person-years'))
+
+```
+
+
+```{r Not run combine baseline dataset again to run Cox}
 
 combined_data.baseline<-rbind(data.baseline.1,data.baseline.2,data.baseline.3,data.baseline.4,data.baseline.5,data.baseline.6,data.baseline.7,data.baseline.8,data.baseline.9)
 
@@ -831,7 +1044,7 @@ try.cox<-with(data=imp.baseline.list,coxph(Surv(years,cens)~age10+sex+yearseduca
 
 ```
 
-```{r combine long data to run lme}
+```{r Not run combine long data to run lme}
 
 combined_data_long<-rbind(data_long.1,data_long.2,data_long.3,data_long.4,data_long.5,data_long.6,data_long.7,data_long.8,data_long.9)
 
