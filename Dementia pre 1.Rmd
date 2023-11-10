@@ -54,15 +54,11 @@ datanew<-datanew%>%
 
 datanew[datanew$originalid=="PCP46",]
 
-
 ```
 
 ```{r select variables need}
 
 #Baseline age, sex, years of education, presence of hallucinations, cognitive symptoms (none, vs yes but not impairing functioning, vs yes and impairing functioning), ? H&Y stage, MDS-UPDRS part 3, (MMSE).
-
-
-
 
 data1<-datanew%>%
   select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
@@ -70,7 +66,9 @@ data1<-datanew%>%
          "mdsupdrspart3bltotalconvertedasa", "yearseducation",
          "mdsupdrsbl102hallucinations", "updrsblitem2thoughtdisorders",
          "mdsupdrsbl101cognitive","updrsblitem1intellectual",
-         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost")
+         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost","losttofollowup","dead")
+
+
 
 data1$study<-factor(data1$study,
                     levels = c(1,2,3,4,5,6),
@@ -207,7 +205,7 @@ data1%>%
   count()          #PINE 62, already has dementia before baseline visit
 
 
-data1[is.na(data1$years),] #One patients in PICNICS, idpicc, PCP66, only had baseline visit time and time of death, no followup information. 
+data1[is.na(data1$years),] #One patients in PICNICS, originalid==PCP66, no censoring date, so have to remove
 
 
 data1<-data1%>%
@@ -227,34 +225,9 @@ data1%>%
   group_by(study)%>%
   count()
 
-21+8+4+29+14+62 #Without ICICE, so CamPalGN n=21; NYPUM n=8; ParkWest n=4; PICNICS=29+1; PINE n=76
-
-1080-155 #Without ICICLE, so 927
-```
+#21+8+4+29+14+62 #Without ICICE, so CamPalGN n=21; NYPUM n=8; ParkWest n=4; PICNICS=29+1; PINE n=76
 
 
-```{r only keep those have mmse follow-up}
-
-data.nommse.follow<-data1%>%
-  filter(is.na(mmseyr1total)&is.na(mmseyr2total)&is.na(mmseyr3total)&is.na(mmseyr4total)&is.na(mmseyr5total)&is.na(mmseyr6total)&is.na(mmseyr7total)&is.na(mmseyr8total)&is.na(mmseyr9total)&is.na(mmseyr10total)&is.na(mmseyr11total)&is.na(mmseyr12total))
-
-data.nommse.follow%>%
-  group_by(study)%>%
-  count()
-
-#ICICLE 14, NYPUM 6, ParkWest 3, PICNICS 19, PINE 5 (P158,P529,P579,P794,P85)
-#47 patients didn't have mmse follow-up 
-
-data1<-data1%>%
-  filter(!is.na(mmseyr1total)|!is.na(mmseyr2total)|!is.na(mmseyr3total)|!is.na(mmseyr4total)|!is.na(mmseyr5total)|!is.na(mmseyr6total)|!is.na(mmseyr7total)|!is.na(mmseyr8total)|!is.na(mmseyr9total)|!is.na(mmseyr10total)|!is.na(mmseyr11total)|!is.na(mmseyr12total))
-
-6+3+19+5 #Without ICICIE 
-
-data1%>%
-  group_by(study)%>%
-  count()
-
-119+130+185+230+275 #Without ICICLE 939
 ```
 
 
@@ -274,7 +247,7 @@ data1.10.all<-subset(data1.temp10, timegroup == 1) #only the first 10 year
 data1.10<-data1.10.all%>%
   filter(study!="ICICLE")
 
-data1.10.all%>%
+data1.10%>%
   group_by(study)%>%
   count()
 
@@ -295,7 +268,7 @@ data.rename.noIC<-data1.10%>%  #rember to change to data1.10.remove
 explanatory<-c("Smoking","Years of education","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
 dependent<- c("cens","tt") #"Smoking"
 
-#png("missingp.png",width = 2000,height =2000,res = 400)
+#png("missingp.png",width = 3000,height =2000,res = 400)
 
 mispattern<-data.rename.noIC %>% 
   missing_pattern(explanatory)
@@ -306,11 +279,11 @@ mispattern<-data.rename.noIC %>%
 
 colnames(data1.10[,c(8,9,10,51,52)])
 
-nrow(data1.10[complete.cases(data1.10[,c(8,9,10,51,52)]),])  #816 in data1.10.remove 841 in data1.10.remove without smoking
+nrow(data1.10[complete.cases(data1.10[,c(8,9,10,51,52)]),])  #816 in data1.10.remove 743 in data1.10.remove without smoking
 
 (896-816)/896 #0.09 
 
-(890-841)/890 #0.06
+(808-743)/808 #0.08
 
 colnames(data1.10[,c(9,10,51,52)])
 
@@ -543,8 +516,6 @@ for (name in dataset_names) {
   assign(name, dataset)
 }
 
-
-
 for (name in dataset_names) {
   # Get the dataset
   dataset <- get(name)
@@ -554,6 +525,20 @@ for (name in dataset_names) {
   # Update the dataset in the environment
   assign(name, dataset)
 }
+
+#add one columns year0 and 0 to all 9 imputation dataset
+
+data.imp1$year0<-0
+data.imp2$year0<-0
+data.imp3$year0<-0
+data.imp4$year0<-0
+data.imp5$year0<-0
+data.imp6$year0<-0
+data.imp7$year0<-0
+data.imp8$year0<-0
+data.imp9$year0<-0
+
+
 
 #----create year follow-up----
 
@@ -565,7 +550,7 @@ for (i in seq_along(dataset_names)) {
   # Perform pivot_longer operation
   long_dataset <- dataset %>%
     pivot_longer(
-      cols = `year1`:`year15`,
+      cols = c(`year0`, `year1`:`year15`),
       names_to = "visityear",
       values_to = "followupyears",
       values_transform = ~ as.numeric(gsub(",", "", .x)),
@@ -578,7 +563,8 @@ for (i in seq_along(dataset_names)) {
 
 
 
-#change mmseyr to year1 to year12
+#change mmseyr to year1 to year12 
+#add mmsebl to year0
 
 for (i in seq_along(dataset_names)) {
   # Get the dataset
@@ -592,14 +578,14 @@ for (i in seq_along(dataset_names)) {
            "mmseyr9total", "mmseyr10total", "mmseyr11total", "mmseyr12total")
   
   # Rename selected columns
-  colnames(MMSE_data)[7:18] <- c("year1", "year2", "year3", "year4",
+  colnames(MMSE_data)[6:18] <- c("year0","year1", "year2", "year3", "year4",
                                  "year5", "year6", "year7", "year8",
                                  "year9", "year10", "year11", "year12")
   
   # Perform pivot_longer operation
   mmse_long <- MMSE_data %>%
     pivot_longer(
-      cols = `year1`:`year12`,
+      cols = `year0`:`year12`,
       names_to = "visityear",
       values_to = "mmse",
       values_transform = ~ as.numeric(gsub(",", "", .x)),
@@ -615,8 +601,8 @@ for (i in seq_along(dataset_names)) {
 ```{r cmobine long format dataset 1}
 #-----combine all long tidy------
 
-nrow(years_long.1)  #4564
-nrow(mmse_long.1)   #3905
+nrow(years_long.1)  #5460
+nrow(mmse_long.1)   #4779
 
 
 years_long.new.1<-years_long.1%>%
@@ -673,6 +659,7 @@ for (i in dataset_indices) {
 }
 
 ```
+
 
 ```{r check missing age in longtitude datasets}
 
@@ -766,6 +753,7 @@ for (i in 1:9) {
 
 ```
 
+
 ```{r create baseline data1}
 
 data.baseline.1<-data.imp1%>%
@@ -794,42 +782,9 @@ for (i in seq_along(dataset_names)) {
 }
 ```
 
-```{r match longtidue data with baseline1}
-
-#If patients only had one follow-up, which mean the follow-up equal to the event year, then need to be removed. 
-
-setdiff(unique(data.baseline.1$id),unique(data_long.1$id)) #65 182 351 689 737 839
-
-# List of dataset names
-dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8","data.baseline.9")
-
-# List of ids to be removed
-ids_to_remove <- c(65, 182, 351, 689, 737, 839)
-
-# Loop through each dataset
-for (i in seq_along(dataset_names)) {
-  # Get the dataset
-  dataset <- get(dataset_names[i])
-  
-  # Remove specific ids from the dataset
-  for (id in ids_to_remove) {
-    dataset <- dataset[dataset$id != id, ]
-  }
-  
-  # Assign the result to the output dataset
-  assign(dataset_names[i], dataset)
-}
-
-
-data.baseline.1%>%
-  group_by(study)%>%
-  count()
-
-```
-
 ```{r remove unused levels}
 
-levels(data.baseline.1$study)
+levels(data.baseline.2$study)
 
 data.baseline.1$study<-droplevels(data.baseline.1$study)
 data.baseline.2$study<-droplevels(data.baseline.2$study)
@@ -842,51 +797,76 @@ data.baseline.8$study<-droplevels(data.baseline.8$study)
 data.baseline.9$study<-droplevels(data.baseline.9$study)
 
 
+data_long.2$study<-droplevels(data_long.2$study)
+
+levels(data_long.2$study)
+
+#Check if they match
+
+diff_id<-setdiff(unique(data.baseline.2$id),unique(data_long.2$id))
+
+diff_idpicc<-setdiff(unique(data.baseline.2$idpicc),unique(data_long.2$idpicc))
+
+#148 151 174 251 825
+#idpicc
+#328 331 354 436 1648
+
+data1%>%
+  filter(idpicc %in% diff_idpicc)%>%
+  group_by(study)%>%
+  count()
+
+#These 5 patients have no record in MMSE at baseline and followup, all MMSE value are missing
+# 4 in NYPUM and 1 in PINE
+
+#----remove patients without any MMSE records in baseline dataset---
+
+data.baseline.2<-data.baseline.2%>%
+  filter(!idpicc %in% diff_idpicc)
+
+
+data.baseline.2%>%
+  group_by(study)%>%
+  count()
+
 ```
+
 
 ```{r Characteristic baseline}
 
-
-# the id need to remove before c(65, 182, 351, 689, 737, 839)
-
-imp3.new[imp3.new$id==c(65, 182, 351, 689, 737, 839),]%>%
-  select(study,idpicc,originalid)
-
-#study      idpicc originalid
-#CamPalGN    69    244
-#NYPUM      366    337
-#ParkWest   546    B100
-#PINE       1600   P193
-#           1188   P351
-#           1271   P659
-
-data1.10.remove<-data1.10[data1.10$idpicc!=69,]
-data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=366,]
-data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=546,]
-data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1600,]
-data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1188,]
-data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1271,]
+data1.10.remove<-data1.10%>%
+  filter(! idpicc %in% diff_idpicc)
 
 
-
-data.baseline.1%>%
+data1.10.remove%>%
   group_by(study)%>%
   summarise(round(mean(agebl),1),round(sd(agebl),1))
 
-data.baseline.1$sex<-factor(data.baseline.1$sex,
-                    levels = c(1,2),
-                    labels= c("male","female"))
+data1.10.remove%>%
+  summarise(round(mean(agebl),1),round(sd(agebl),1))
 
-table(data.baseline.1$sex)
+#data1.10.remove$sex<-factor(data1.10.remove$sex,
+#                    levels = c(1,2),
+#                    labels= c("male","female"))
+
+table(data1.10.remove$sex,data1.10.remove$study)
 
 
-data.baseline.1%>%
+data1.10.remove%>%
   group_by(study)%>%
+  summarise(round(median(hybl),1),round(quantile(hybl),1))
+
+data1.10.remove%>%
   summarise(round(median(hybl),1),round(quantile(hybl),1))
 
 
 data1.10.remove%>%
+  group_by(study)%>%
   summarise(round(median(mdsupdrspart3bltotalconvertedasa,na.rm=T),1),round(quantile(mdsupdrspart3bltotalconvertedasa,na.rm=T),1))
+
+data1.10.remove%>%
+  summarise(round(median(mdsupdrspart3bltotalconvertedasa,na.rm=T),1),round(quantile(mdsupdrspart3bltotalconvertedasa,na.rm=T),1))
+
 
 data1.10.remove%>%
   filter(is.na(mdsupdrspart3bltotalconvertedasa))%>%
@@ -899,12 +879,15 @@ data1.10.remove%>%
   summarise(round(mean(yearseducation,na.rm=T),1),round(sd(yearseducation,na.rm=T),1))
 
 data1.10.remove%>%
+  summarise(round(mean(yearseducation,na.rm=T),1),round(sd(yearseducation,na.rm=T),1))
+
+data1.10.remove%>%
   filter(is.na(yearseducation))%>%
   group_by(study)%>%
   count()
 
 
-table(data1.10.remove$hallucinationsindex)
+table(data1.10.remove$hallucinationsindex,data1.10.remove$study)
   
 
 data1.10.remove%>%
@@ -921,40 +904,54 @@ data1.10.remove%>%
   group_by(study)%>%
   count()
 
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise(round(median(mmsebltotal,na.rm=T),1),round(quantile(mmsebltotal,na.rm=T),1))
+
+data1.10.remove%>%
+  summarise(round(median(mmsebltotal,na.rm=T),1),round(quantile(mmsebltotal,na.rm=T),1))
+
+
+data1.10.remove%>%
+  filter(is.na(mmsebltotal))%>%
+  group_by(study)%>%
+  count()
+
+
 data1.10.remove%>%
   filter(is.na(smoking))%>%
   group_by(study)%>%
   count()
 
-table(data1.10.remove$study,data1.10.remove$smoking)
+table(data1.10.remove$smoking,data1.10.remove$study)
 
 
 #event
-
-data.baseline.1%>%
-  group_by(study)%>%
+data1.10.remove%>%
+  #group_by(study)%>%
   summarise(sum(cens)) # 0 is censoring
 
 data1.10.remove%>%
   group_by(study)
 
-data%>%
+data1.10%>%
   filter(losttofollowup==1)%>%
-  filter(idpicc!=69)%>%
-  filter(idpicc!=366)%>%
-  filter(idpicc!=546)%>%
-  filter(idpicc!=1600)%>%
-  filter(idpicc!=1188)%>%
-  filter(idpicc!=1271)%>%
   group_by(study)%>%
-  count() #need to remove study 2 cos ICICLE is not inside
+  count() 
 
 
 #without the date of death
 data1.10.remove%>%
   group_by(study)%>%
-  filter(is.na(datedeath))%>%
+  filter(dead==1)%>%  #But know death
   count()
+
+data1.10.remove%>%
+  group_by(study)%>%
+  filter(cens!=1)%>%
+  filter(!is.na(datedementia))%>%
+  count()#Those patients got dementia later than 10 years, but I cut the time 10 years. 6 in PINE, 1 in NYPUM
 
 ```
 
@@ -1010,19 +1007,7 @@ reverse.KM<-survfit(Surv(years,cens.followup)~study,data=data1.10.remove)
 #survfit(Surv(years,cens.followup)~1,data=data1.10.remove)
 
 ```
-```{r PICNICS reKM KM}
 
-PICNICS<-data1.10.remove%>%
-  filter(study=="PICNICS")
-
-PICNICS.cens<-PICNICS%>%
-  filter(cens==0)
-
-PICNICS.event<-PICNICS%>%
-  filter(cens==1)
-
-
-```
 
 
 ```{r event/incidence}
@@ -1034,52 +1019,3 @@ data1.10.remove%>%
 ```
 
 
-```{r Not run combine baseline dataset again to run Cox}
-
-combined_data.baseline<-rbind(data.baseline.1,data.baseline.2,data.baseline.3,data.baseline.4,data.baseline.5,data.baseline.6,data.baseline.7,data.baseline.8,data.baseline.9)
-
-imp.baseline.list<-jomo2mitml.list(combined_data.baseline)
-
-try.cox<-with(data=imp.baseline.list,coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study)),x=T,y=T)
-
-```
-
-```{r Not run combine long data to run lme}
-
-combined_data_long<-rbind(data_long.1,data_long.2,data_long.3,data_long.4,data_long.5,data_long.6,data_long.7,data_long.8,data_long.9)
-
-imp.data_long<-jomo2mitml.list(combined_data_long)
-
-try.lme<-with(data=imp.data_long,lme(mmse~ agebl+yearseducation+followupyears, random = ~ followupyears | idpicc, data=combined_data_long))
-
-#I don't know how to put these two together.
-```
-
-
-```{r }
-
-try.lme<-lme(mmse~ agebl+yearseducation+followupyears, random = ~ followupyears | idpicc,data=combined_data_long) 
-
-try.cox<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=combined_data.baseline, x = TRUE,model = TRUE)
-
-try.cox<-with(data=imp.baseline.list,coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study)),x=T,y=T)
-
-try.cox.res<-testEstimates(try.cox)
-
-try.cox.estimate<-as.data.frame(try.cox.res[["estimates"]])
-
-try.cox.estimate$Estimate
-
-
-
-pool(try.cox)
-
-try.jm<-jm(try.cox, try.lme, time_var = "followupyears")
-
-
-
-#Error in checkForRemoteErrors(val) : 
-#3 nodes produced errors; first error: addition: incompatible matrix dimensions: 890x1 and 8010x1
-
-#The problem is in COX, The N=8010 (890*9). I need to figure out how to pool an average model from it
-```

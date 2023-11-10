@@ -13,12 +13,25 @@ library(patchwork)#arrange plot
 ```
 
 
+```{r randomly select the second imputation}
+
+#Need to remove the MMSE records after event (dementia)
+
+data_long.2.new<-data_long.2%>%
+                 filter(years>followupyears)
+
+#Because PINE had biggest sample size, so the PINE should be as reference group
+
+```
+
+
 ```{r check longitudinal outcome mmse}
 
-data_plot<-data_long.1[order(data_long.1$followupyears), ]
+data_plot<-data_long.2.new[order(data_long.2.new$followupyears), ]
 
 mmse_plot<-data_plot%>%
-   select("study","id","idpicc","followupyears","visityear","mmse")
+   select("study","id","idpicc","followupyears","visityear","mmse")%>%
+   filter(followupyears!=0)
 
 mmse_plot<-mmse_plot%>%
   arrange(id,followupyears)
@@ -28,22 +41,6 @@ mmse_plot<-mmse_plot%>%
 #    geom_line()
 
 #check the one with all zero MMSE in followup years
-
-mmse_plot%>%
-  filter(mmse==0)
-
-#1666
-#1677
-#1300
-
-mmse_plot%>%
-  filter(idpicc==1666) # 0 0
-
-mmse_plot%>%
-  filter(idpicc==1677) # 19 18 10 0 0
-
-mmse_plot%>%
-  filter(idpicc==1300) # 29 28 26 25 16 13 0 0 0
 
 
 p1<-ggplot(data = subset(mmse_plot,study=="CamPalGN"), aes(x = followupyears, y = mmse,group=idpicc))+
@@ -82,13 +79,13 @@ p6<-ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=id))+
     ylab("MMSE")+
     theme_bw()
 
-png("MMSE1.png",width = 3000,height =1500,res = 400)
+#png("MMSE1.png",width = 3000,height =1500,res = 400)
 
 p1+p2+p3+p4+p5+p6
 
-#grid.arrange(p1,p2,p3,p4,ncol=2)
+#grid.arrange(p1,p2,p3,p4,ncol=2) not need 
 
-dev.off()
+#dev.off()
 
 #A<-mmse_plot%>%
 #  filter(study=="PICNICS")%>%
@@ -99,8 +96,209 @@ dev.off()
 #length(unique(A$idpicc))
 
 ```
+```{r Create the fitting model dataset}
 
-```{r baseline model}
+#-----remove variables that don't need----
+
+data_long.2.fit<-data_long.2.new%>%
+  select(study,idpicc,agebl,sex,yearseducation,followupyears,mmse,mdsupdrspart3bltotalconvertedasa,hybl,hallucinationsindex,cognitiveindex,years,cens)
+
+data.baseline.2.fit<-data.baseline.2%>%
+  select(study,idpicc,agebl,sex,yearseducation,mdsupdrspart3bltotalconvertedasa,hybl,hallucinationsindex,cognitiveindex,years,cens)
+
+
+#check the study levels
+
+levels(data_long.2.fit$study)
+levels(data.baseline.2.fit$study)
+
+#----changing the reference level to PINE, as the PINE has the biggest sample size of patients with event
+
+data.baseline.2.fit$study<-factor(data.baseline.2.fit$study,levels=c("PINE","CamPalGN","NYPUM","ParkWest","PICNICS")) #put PINE as the first level
+
+levels(data.baseline.2.fit$study)
+
+data.baseline.2.fit%>%
+  group_by(study)%>%
+  count(cens)
+
+
+data_long.2.fit$study<-factor(data_long.2.fit$study,levels=c("PINE","CamPalGN","NYPUM","ParkWest","PICNICS")) #put PINE as the first level
+
+levels(data_long.2.fit$study)
+
+
+```
+
+
+
+```{r create the lme data and fit model}
+
+setdiff(unique(data.baseline.2$id),unique(data_long.2.new$id))
+
+length(unique(data_long.2.new$idpicc))
+nrow(data.baseline.2)
+
+#----test to see which one works------
+
+#As years of education only missing 11, so the best model select from first imputation data set can view as general
+
+lme.1<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit) 
+
+lme.2<-lme(mmse~ agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
+
+lme.3<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
+
+lme.4<-lme(mmse~ study*agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
+
+lme.5<-lme(mmse~ agebl+sex+study*yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
+
+summary(lme.3)
+
+#put PINE as the ref
+
+round(AIC(lme.1),2) 
+AIC(lme.2) 
+AIC(lme.3) 
+AIC(lme.4) 
+AIC(lme.5) 
+
+BIC(lme.1) 
+BIC(lme.2)
+BIC(lme.3) 
+BIC(lme.4) 
+BIC(lme.5) 
+
+#choose lme.3
+
+#variables in lme: sex agebl yearseducation followupyears idpicc
+#variables in Cox: agebl sex yearseducation mdsupdrspart3bltotalconvertedasa hybl hallucinationsindex cognitiveindex strata(study)
+```
+
+```{r joint model}
+#----joint model---
+
+lme<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
+
+#Stratified Cox
+
+baseline.cox.1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.2.fit, x = TRUE,model = TRUE)
+
+#Study as fixed effect
+
+baseline.cox.2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
+
+jointFit.1<-jm(baseline.cox.1, lme, time_var = "followupyears") 
+
+summary(jointFit.1)
+
+jointFit.2<-jm(baseline.cox.2, lme, time_var = "followupyears") 
+
+summary(jointFit.2)
+
+compare_jm(jointFit.1,jointFit.2)
+
+```
+
+
+```{r try to run just one study,example PINE}
+
+
+a<-unique(data_long.2.new$idpicc)
+a<-unique(data.baseline.2)
+
+
+PINE_long<-data_long.2.new%>%
+  filter(study=="PINE")
+
+PINE.baseline<-data.baseline.2%>%
+  filter(study=="PINE")
+
+
+lme.PINE<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=PINE_long)
+
+baseline.cox.PINE<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex,data=PINE.baseline, x = TRUE,model = TRUE)
+
+jointFit.PINE<-jm(baseline.cox.PINE, lme.PINE, time_var = "followupyears") 
+
+summary(jointFit.PINE)
+
+predict.data<-data_long.2.new[data_long.2.new$idpicc == 1687,] #1621 event at 8 years #1207 is without event #1687 has event before 1 visit 
+
+predict.data.time<-predict.data[predict.data$followupyears==0,] #from baseline 
+
+predict.data.time$cens<-0 #not event
+
+predict.data.time$years<-0 #predict time at 0 years
+
+
+#predict for longitudinal outcomes
+
+predMMSE1<-predict(jointFit.PINE,newdata = predict.data.time,return_newdata = T) #see how the fit is
+
+predMMSE2<-predict(jointFit.PINE,newdata = predict.data.time,times = seq(0,3, length.out=51),return_newdata = T) #for future time point
+
+plot(predMMSE1)
+plot(predMMSE2)
+
+predSurv<-predict(jointFit.PINE,newdata = predict.data.time,process = "event",return_newdata = T) # use the information before 3 years to predict
+
+plot(predSurv)
+
+plot(predMMSE2,predSurv)
+
+
+#unique(PINE.baseline$idpicc)
+
+#PINE.baseline%>%
+ # filter(cens==1)
+```
+
+
+```{r Try two studies}
+
+#CamPalGN + PINE
+
+try_long<-data_long.2.new%>%
+  filter(study%in% c("PINE","CamPalGN"))
+
+try.baseline<-data.baseline.2%>%
+  filter(study%in% c("PINE","CamPalGN"))
+
+data_long.2.new$study<-droplevels(data_long.2.new$study)
+
+try_long$study<-droplevels(try_long$study)
+
+try.baseline$study<-droplevels(try.baseline)
+
+levels(try_long$study)
+
+
+lme.try<-lme(mmse~ study+sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=try_long)
+
+#I guess is because if I add study inside then the output will have study as intercept?
+
+baseline.cox.try<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+strata(study),data=try.baseline, x = TRUE,model = TRUE)
+
+jointFit.try<-jm(baseline.cox.try, lme.try, time_var = "followupyears") 
+
+#Same error, just cannot add the study inside the lme function
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r not run 9 baseline model}
 
 baseline.cox.1<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.1, x = TRUE,model = TRUE)
 
@@ -125,37 +323,9 @@ baseline.cox.9<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hyb
 ```
 
 
-```{r chose linear mixed model}
-
-#----test to see which one works------
-
-#As years of education only missing 11, so the best model select from first imputation data set can view as general
-
-lme.1<-lme(mmse~ agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2) 
-
-lme.2<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2)
-
-lme.3<-lme(mmse~ study+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2)
-
-lme.4<-lme(mmse~ study*agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2)
-
-lme.5<-lme(mmse~ agebl+study*yearseducation, random = ~ followupyears | idpicc, data=data_long.2)
-
-round(AIC(lme.1),2) #19799.98
-AIC(lme.2) #19794.17
-AIC(lme.3) #19785.5
-AIC(lme.4) #19802.32
-AIC(lme.5) #19791.72
-
-BIC(lme.1) #19843.75
-BIC(lme.2) #19844.18
-BIC(lme.3) #19854.26
-BIC(lme.4) #19896.08
-BIC(lme.5) #19885.47
+```{r not run 9 lme}
 
 #Choose lme.2
-
-
 lme.2.1<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.1) 
 
 lme.2.2<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2) 
@@ -176,7 +346,7 @@ lme.2.9<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, 
 
 ```
 
-```{r joint model}
+```{r not run 9 joint model}
 
 jointFit.1<-jm(baseline.cox.1, lme.2.1, time_var = "followupyears") #it works
 
@@ -201,6 +371,89 @@ jointFit.9<-jm(baseline.cox.9, lme.2.9, time_var = "followupyears")
 summary(jointFit.2)
 
 ```
+
+
+
+```{r pre IECV}
+
+data_long.2$age10<-data_long.2$agebl/10
+
+data_long.2$mdsupdrs3.10<-data_long.2$mdsupdrspart3bltotalconvertedasa/10
+
+Cam_long<-data_long.2%>%
+  filter(study!="CamPalGN")
+
+Cam.baseline<-data.baseline.2%>%
+  filter(study!="CamPalGN")
+
+Cam.v<-data_long.2%>%
+  filter(study=="CamPalGN")
+
+
+
+#refit model
+
+Cam.cox<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=Cam.baseline, x = TRUE,model = TRUE)
+
+Cam.lme<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=Cam_long) 
+
+jointFit.Cam<-jm(Cam.cox, Cam.lme, time_var = "followupyears") 
+
+summary(jointFit.Cam)
+
+tvAUC(jointFit.Cam,Cam.v,Tstart = 3, Dt=1)
+
+```
+
+
+
+```{r not run maybe don't need to remove}
+
+#----create the lme data----
+
+#need to remove followupyear=0, cos we fit the model with followupyears
+
+data_long_lme<-data_long.2.new%>%
+  filter(followupyears!=0)
+
+#If patients without the follow-up mmse, only had the baseline mmse then need to be removed when building the models 
+
+
+setdiff(unique(data.baseline.2$id),unique(data_long.2.new$id))
+
+
+#only_baseline<-setdiff(unique(data.baseline.2$id),unique(data_long_lme$id))
+
+#data.baseline.2%>%
+#  filter(id %in% only_baseline)%>%
+#  group_by(study)%>%
+#  count()
+
+#remove those only baseline in data, so the baseline and lme data can match
+
+# List of dataset names
+dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8","data.baseline.9")
+
+# List of ids to be removed
+ids_to_remove <- only_baseline
+
+# Loop through each dataset
+for (i in seq_along(dataset_names)) {
+  # Get the dataset
+  dataset <- get(dataset_names[i])
+  
+  # Remove specific ids from the dataset
+  for (id in ids_to_remove) {
+    dataset <- dataset[dataset$id != id, ]
+  }
+  
+  # Assign the result to the output dataset
+  assign(dataset_names[i], dataset)
+}
+
+```
+
+
 
 ```{r Rubin´s Rules coefficent,sd,se}
 

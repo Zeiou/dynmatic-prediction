@@ -4,6 +4,172 @@ output: html_document
 date: "2023-06-29"
 ---
 
+
+```{r (need to change) only keep those have mmse follow-up}
+
+data.nommse.follow<-data1%>%
+  filter(is.na(mmseyr1total)&is.na(mmseyr2total)&is.na(mmseyr3total)&is.na(mmseyr4total)&is.na(mmseyr5total)&is.na(mmseyr6total)&is.na(mmseyr7total)&is.na(mmseyr8total)&is.na(mmseyr9total)&is.na(mmseyr10total)&is.na(mmseyr11total)&is.na(mmseyr12total))
+
+data.nommse.follow%>%
+  group_by(study)%>%
+  count()
+
+#ICICLE 14, NYPUM 6, ParkWest 3, PICNICS 19, PINE 5 (P158,P529,P579,P794,P85)
+#47 patients didn't have mmse follow-up 
+
+data1<-data1%>%
+  filter(!is.na(mmseyr1total)|!is.na(mmseyr2total)|!is.na(mmseyr3total)|!is.na(mmseyr4total)|!is.na(mmseyr5total)|!is.na(mmseyr6total)|!is.na(mmseyr7total)|!is.na(mmseyr8total)|!is.na(mmseyr9total)|!is.na(mmseyr10total)|!is.na(mmseyr11total)|!is.na(mmseyr12total))
+
+6+3+19+5 #Without ICICIE 
+
+data1%>%
+  group_by(study)%>%
+  count()
+
+119+130+185+230+275 #Without ICICLE 939
+```
+
+```{r not run match longtidue data with baseline1}
+
+#If patients only had one follow-up, which mean the follow-up equal to the event year, then need to be removed. 
+
+#setdiff(unique(data.baseline.1$id),unique(data_long.1$id)) #drop off the year0 then can see #65 182 351 689 737 839
+
+# List of dataset names
+dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8","data.baseline.9")
+
+# List of ids to be removed
+ids_to_remove <- c(65, 182, 351, 689, 737, 839)
+
+# Loop through each dataset
+for (i in seq_along(dataset_names)) {
+  # Get the dataset
+  dataset <- get(dataset_names[i])
+  
+  # Remove specific ids from the dataset
+  for (id in ids_to_remove) {
+    dataset <- dataset[dataset$id != id, ]
+  }
+  
+  # Assign the result to the output dataset
+  assign(dataset_names[i], dataset)
+}
+
+
+data.baseline.1%>%
+  group_by(study)%>%
+  count()
+
+```
+
+
+
+```{r Not run event years should be longer than followupyears}
+
+data_long.1<-data_long.1%>%
+  filter(years>followupyears)
+
+data_long.2<-data_long.2%>%
+  filter(years>followupyears)
+
+data_long.3<-data_long.3%>%
+  filter(years>followupyears)
+
+data_long.4<-data_long.4%>%
+  filter(years>followupyears)
+
+data_long.5<-data_long.5%>%
+  filter(years>followupyears)
+
+data_long.6<-data_long.6%>%
+  filter(years>followupyears)
+
+data_long.7<-data_long.7%>%
+  filter(years>followupyears)
+
+data_long.8<-data_long.8%>%
+  filter(years>followupyears)
+
+data_long.9<-data_long.9%>%
+  filter(years>followupyears)
+
+setdiff(unique(data.baseline.1$idpicc),unique(data_long.1$idpicc)) #internal cens? Got dementia between baseline the next follow-up time
+
+data.baseline.1%>%
+  filter(idpicc %in% c(2,6,7,15,22,23,32,34,45,50,59,62,65,66,78,92,94,99,101,314,343,405,456,
+                       634,637,644,646,653,661,662,664,665,666,676,680,683,686,689,690,698,705,712,716,717,719,721,
+                       734,735,756,759,760,773,781,783,785,787,792,801,804,807,818,831,872,874,895,896,903,909,1577,
+                       1146,1599,1155,1158,1171,1639,1645,1666,1677,1679,1313,1687,1588))%>%
+  group_by(study)%>%
+  count()
+
+
+# List of dataset names
+dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8","data.baseline.9")
+
+# List of ids to be removed
+idpiccs_to_remove <- c(2,6,7,15,22,23,32,34,45,50,59,62,65,66,78,92,94,99,101,314,343,405,456,
+                       634,637,644,646,653,661,662,664,665,666,676,680,683,686,689,690,698,705,712,716,717,719,721,
+                       734,735,756,759,760,773,781,783,785,787,792,801,804,807,818,831,872,874,895,896,903,909,1577,
+                       1146,1599,1155,1158,1171,1639,1645,1666,1677,1679,1313,1687,1588)
+
+# Loop through each dataset
+for (i in seq_along(dataset_names)) {
+  # Get the dataset
+  dataset <- get(dataset_names[i])
+  
+  # Remove specific ids from the dataset
+  for (idpicc in idpiccs_to_remove) {
+    dataset <- dataset[dataset$idpicc != idpicc, ]
+  }
+  
+  # Assign the result to the output dataset
+  assign(dataset_names[i], dataset)
+}
+
+
+data.baseline.1%>%
+  group_by(study)%>%
+  count()
+
+data.baseline.1%>%
+  count()
+
+```
+
+
+
+```{r Characteristic baseline}
+
+
+# the id need to remove before c(65, 182, 351, 689, 737, 839)
+
+imp3.new[imp3.new$id==c(65, 182, 351, 689, 737, 839),]%>%
+  select(study,idpicc,originalid)
+
+#study      idpicc originalid
+#CamPalGN    69    244
+#NYPUM      366    337
+#ParkWest   546    B100
+#PINE       1600   P193
+#           1188   P351
+#           1271   P659
+
+data1.10.remove<-data1.10[data1.10$idpicc!=69,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=366,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=546,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1600,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1188,]
+data1.10.remove<-data1.10.remove[data1.10.remove$idpicc!=1271,]
+
+data1.10.remove<-data1.10.remove%>%
+  filter(! idpicc %in% c(2,6,7,15,22,23,32,34,45,50,59,62,65,66,78,92,94,99,101,314,343,405,456,
+                       634,637,644,646,653,661,662,664,665,666,676,680,683,686,689,690,698,705,712,716,717,719,721,
+                       734,735,756,759,760,773,781,783,785,787,792,801,804,807,818,831,872,874,895,896,903,909,1577,
+                       1146,1599,1155,1158,1171,1639,1645,1666,1677,1679,1313,1687,1588))
+```
+
+
 ```{r missing pattern}
 
 data.baseline.noIC<-data.baseline.new
@@ -398,7 +564,55 @@ summary(Mlme4.1) #19644.03 19681.55
 
 Mlme5.1<-lme(mmse~ followupyears +study , random = ~ followupyears | idpicc, data=data_long.1)
 summary(Mlme5.1)
+```
+
+
+```{r Not run combine baseline dataset again to run Cox}
+
+combined_data.baseline<-rbind(data.baseline.1,data.baseline.2,data.baseline.3,data.baseline.4,data.baseline.5,data.baseline.6,data.baseline.7,data.baseline.8,data.baseline.9)
+
+imp.baseline.list<-jomo2mitml.list(combined_data.baseline)
+
+try.cox<-with(data=imp.baseline.list,coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study)),x=T,y=T)
+
+```
+
+```{r Not run combine long data to run lme}
+
+combined_data_long<-rbind(data_long.1,data_long.2,data_long.3,data_long.4,data_long.5,data_long.6,data_long.7,data_long.8,data_long.9)
+
+imp.data_long<-jomo2mitml.list(combined_data_long)
+
+try.lme<-with(data=imp.data_long,lme(mmse~ agebl+yearseducation+followupyears, random = ~ followupyears | idpicc, data=combined_data_long))
+
+#I don't know how to put these two together.
+```
+
+
+```{r }
+
+try.lme<-lme(mmse~ agebl+yearseducation+followupyears, random = ~ followupyears | idpicc,data=combined_data_long) 
+
+try.cox<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=combined_data.baseline, x = TRUE,model = TRUE)
+
+try.cox<-with(data=imp.baseline.list,coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study)),x=T,y=T)
+
+try.cox.res<-testEstimates(try.cox)
+
+try.cox.estimate<-as.data.frame(try.cox.res[["estimates"]])
+
+try.cox.estimate$Estimate
 
 
 
+pool(try.cox)
+
+try.jm<-jm(try.cox, try.lme, time_var = "followupyears")
+
+
+
+#Error in checkForRemoteErrors(val) : 
+#3 nodes produced errors; first error: addition: incompatible matrix dimensions: 890x1 and 8010x1
+
+#The problem is in COX, The N=8010 (890*9). I need to figure out how to pool an average model from it
 ```
