@@ -96,6 +96,8 @@ p1+p2+p3+p4+p5+p6
 #length(unique(A$idpicc))
 
 ```
+
+
 ```{r Create the fitting model dataset}
 
 #-----remove variables that don't need----
@@ -134,7 +136,7 @@ levels(data_long.2.fit$study)
 
 ```{r create the lme data and fit model}
 
-setdiff(unique(data.baseline.2$id),unique(data_long.2.new$id))
+#setdiff(unique(data.baseline.2$id),unique(data_long.2.new$id))
 
 length(unique(data_long.2.new$idpicc))
 nrow(data.baseline.2)
@@ -153,7 +155,9 @@ lme.4<-lme(mmse~ study*agebl+sex+yearseducation, random = ~ followupyears | idpi
 
 lme.5<-lme(mmse~ agebl+sex+study*yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
 
-summary(lme.3)
+lme.6<-lme(mmse~ agebl+sex*study+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
+
+#summary(lme.3)
 
 #put PINE as the ref
 
@@ -162,12 +166,14 @@ AIC(lme.2)
 AIC(lme.3) 
 AIC(lme.4) 
 AIC(lme.5) 
+AIC(lme.6)
 
 BIC(lme.1) 
 BIC(lme.2)
 BIC(lme.3) 
 BIC(lme.4) 
 BIC(lme.5) 
+BIC(lme.6)
 
 #choose lme.3
 
@@ -188,192 +194,150 @@ baseline.cox.1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3blt
 
 baseline.cox.2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
 
-jointFit.1<-jm(baseline.cox.1, lme, time_var = "followupyears") 
+#Try to see if the Cox need to have slope or area
 
-summary(jointFit.1)
+#jointFit.1<-jm(baseline.cox.1, lme, time_var = "followupyears") 
+
+#summary(jointFit.1)
 
 jointFit.2<-jm(baseline.cox.2, lme, time_var = "followupyears") 
 
 summary(jointFit.2)
 
-compare_jm(jointFit.1,jointFit.2)
+#compare_jm(jointFit.1,jointFit.2)
+
+#Chose jointFit.1
+
 
 ```
+```{r predict}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.2.fit[data_long.2.fit$idpicc == 1131,]  #event year is 6
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predMMSE.0<-predict(jointFit.2,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.2,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
 
-```{r try to run just one study,example PINE}
+plot(predMMSE.0,predSurv.0)
 
 
-a<-unique(data_long.2.new$idpicc)
-a<-unique(data.baseline.2)
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1.2 #predict time at 0 years
+
+predMMSE.1<-predict(jointFit.2,newdata = predict.data.time.1,times = seq(1.2,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jointFit.2,newdata = predict.data.time.1,process = "event",times = seq(1.2,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
 
-PINE_long<-data_long.2.new%>%
-  filter(study=="PINE")
-
-PINE.baseline<-data.baseline.2%>%
-  filter(study=="PINE")
+plot(predMMSE.1,predSurv.1)
 
 
-lme.PINE<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=PINE_long)
+#-----From baseline up to 2 year-----
 
-baseline.cox.PINE<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex,data=PINE.baseline, x = TRUE,model = TRUE)
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
 
-jointFit.PINE<-jm(baseline.cox.PINE, lme.PINE, time_var = "followupyears") 
+predict.data.time.2$cens<-0 #not event
 
-summary(jointFit.PINE)
+predict.data.time.2$years<-2.1 #predict time at 0 years
 
-predict.data<-data_long.2.new[data_long.2.new$idpicc == 1687,] #1621 event at 8 years #1207 is without event #1687 has event before 1 visit 
+predMMSE.2<-predict(jointFit.2,newdata = predict.data.time.2,times = seq(2.1,5, length.out=20),return_newdata = T) #for future time point
 
-predict.data.time<-predict.data[predict.data$followupyears==0,] #from baseline 
+predSurv.2<-predict(jointFit.2,newdata = predict.data.time.2,process = "event",times = seq(2.1,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-predict.data.time$cens<-0 #not event
 
-predict.data.time$years<-0 #predict time at 0 years
+plot(predMMSE.2,predSurv.2)
 
+
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3.1 #predict time at 0 years
 
 #predict for longitudinal outcomes
 
-predMMSE1<-predict(jointFit.PINE,newdata = predict.data.time,return_newdata = T) #see how the fit is
+predMMSE.3<-predict(jointFit.2,newdata = predict.data.time.3,times = seq(3.1,6, length.out=20),return_newdata = T) #for future time point
 
-predMMSE2<-predict(jointFit.PINE,newdata = predict.data.time,times = seq(0,3, length.out=51),return_newdata = T) #for future time point
+predSurv.3<-predict(jointFit.2,newdata = predict.data.time.3,process = "event",times = seq(3.1,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE1)
-plot(predMMSE2)
-
-predSurv<-predict(jointFit.PINE,newdata = predict.data.time,process = "event",return_newdata = T) # use the information before 3 years to predict
-
-plot(predSurv)
-
-plot(predMMSE2,predSurv)
+plot(predMMSE.3,predSurv.3)
 
 
-#unique(PINE.baseline$idpicc)
+#------From baseline up to 4 years-----
 
-#PINE.baseline%>%
- # filter(cens==1)
+predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4 #predict time at 0 years
+
+#predict for longitudinal outcomes
+
+predMMSE.4<-predict(jointFit.2,newdata = predict.data.time.4,times = seq(4,7, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jointFit.2,newdata = predict.data.time.4,process = "event",times = seq(4,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.4,predSurv.4)
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5.04 #predict time at 0 years
+
+#predict for longitudinal outcomes
+
+predMMSE.5<-predict(jointFit.2,newdata = predict.data.time.5,times = seq(5.04,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.2,newdata = predict.data.time.5,process = "event",times = seq(5.04,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.5,predSurv.5)
+
+
+#----Arrange plot----
+
+#png("JMpred1.png",width = 4000,height =1500,res = 400)
+
+#par(mfrow=c(1,3))
+
+plot(predMMSE.0,predSurv.0,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.1,predSurv.1,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.2,predSurv.2,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+
+#dev.off()
+
+#png("JMpred2.png",width = 4000,height =1500,res = 400)
+
+#par(mfrow=c(1,3))
+
+plot(predMMSE.3,predSurv.3,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.4,predSurv.4,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.5,predSurv.5,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+
+#dev.off()
 ```
-
-
-```{r Try two studies}
-
-#CamPalGN + PINE
-
-try_long<-data_long.2.new%>%
-  filter(study%in% c("PINE","CamPalGN"))
-
-try.baseline<-data.baseline.2%>%
-  filter(study%in% c("PINE","CamPalGN"))
-
-data_long.2.new$study<-droplevels(data_long.2.new$study)
-
-try_long$study<-droplevels(try_long$study)
-
-try.baseline$study<-droplevels(try.baseline)
-
-levels(try_long$study)
-
-
-lme.try<-lme(mmse~ study+sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=try_long)
-
-#I guess is because if I add study inside then the output will have study as intercept?
-
-baseline.cox.try<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+strata(study),data=try.baseline, x = TRUE,model = TRUE)
-
-jointFit.try<-jm(baseline.cox.try, lme.try, time_var = "followupyears") 
-
-#Same error, just cannot add the study inside the lme function
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r not run 9 baseline model}
-
-baseline.cox.1<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.1, x = TRUE,model = TRUE)
-
-#summary(baseline.cox.1)
-#basehaz(baseline.cox.1)
-
-baseline.cox.2<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.2, x = TRUE,model = TRUE)
-
-baseline.cox.3<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.3, x = TRUE,model = TRUE)
-
-baseline.cox.4<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.4, x = TRUE,model = TRUE)
-
-baseline.cox.5<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.5, x = TRUE,model = TRUE)
-
-baseline.cox.6<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.6, x = TRUE,model = TRUE)
-
-baseline.cox.7<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.7, x = TRUE,model = TRUE)
-
-baseline.cox.8<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.8, x = TRUE,model = TRUE)
-
-baseline.cox.9<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.9, x = TRUE,model = TRUE)
-```
-
-
-```{r not run 9 lme}
-
-#Choose lme.2
-lme.2.1<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.1) 
-
-lme.2.2<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.2) 
-
-lme.2.3<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.3) 
-
-lme.2.4<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.4) 
-
-lme.2.5<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.5) 
-
-lme.2.6<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.6) 
-
-lme.2.7<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.7) 
-
-lme.2.8<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.8) 
-
-lme.2.9<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=data_long.9) 
-
-```
-
-```{r not run 9 joint model}
-
-jointFit.1<-jm(baseline.cox.1, lme.2.1, time_var = "followupyears") #it works
-
-jointFit.2<-jm(baseline.cox.2, lme.2.2, time_var = "followupyears") 
-
-jointFit.3<-jm(baseline.cox.3, lme.2.3, time_var = "followupyears") 
-
-jointFit.4<-jm(baseline.cox.4, lme.2.4, time_var = "followupyears") 
-
-jointFit.5<-jm(baseline.cox.5, lme.2.5, time_var = "followupyears") 
-
-jointFit.6<-jm(baseline.cox.6, lme.2.6, time_var = "followupyears") 
-
-jointFit.7<-jm(baseline.cox.7, lme.2.7, time_var = "followupyears")
-
-jointFit.8<-jm(baseline.cox.8, lme.2.8, time_var = "followupyears") 
-
-jointFit.9<-jm(baseline.cox.9, lme.2.9, time_var = "followupyears") 
-
-
-
-summary(jointFit.2)
-
-```
-
-
-
 ```{r pre IECV}
 
 data_long.2$age10<-data_long.2$agebl/10
@@ -406,310 +370,3 @@ tvAUC(jointFit.Cam,Cam.v,Tstart = 3, Dt=1)
 ```
 
 
-
-```{r not run maybe don't need to remove}
-
-#----create the lme data----
-
-#need to remove followupyear=0, cos we fit the model with followupyears
-
-data_long_lme<-data_long.2.new%>%
-  filter(followupyears!=0)
-
-#If patients without the follow-up mmse, only had the baseline mmse then need to be removed when building the models 
-
-
-setdiff(unique(data.baseline.2$id),unique(data_long.2.new$id))
-
-
-#only_baseline<-setdiff(unique(data.baseline.2$id),unique(data_long_lme$id))
-
-#data.baseline.2%>%
-#  filter(id %in% only_baseline)%>%
-#  group_by(study)%>%
-#  count()
-
-#remove those only baseline in data, so the baseline and lme data can match
-
-# List of dataset names
-dataset_names <- c("data.baseline.1", "data.baseline.2", "data.baseline.3", "data.baseline.4", "data.baseline.5", "data.baseline.6", "data.baseline.7", "data.baseline.8","data.baseline.9")
-
-# List of ids to be removed
-ids_to_remove <- only_baseline
-
-# Loop through each dataset
-for (i in seq_along(dataset_names)) {
-  # Get the dataset
-  dataset <- get(dataset_names[i])
-  
-  # Remove specific ids from the dataset
-  for (id in ids_to_remove) {
-    dataset <- dataset[dataset$id != id, ]
-  }
-  
-  # Assign the result to the output dataset
-  assign(dataset_names[i], dataset)
-}
-
-```
-
-
-
-```{r Rubin´s Rules coefficent,sd,se}
-
-# Create a list of the fitted joint models
-joint_models_list <- list(jointFit.1, jointFit.2, jointFit.3, jointFit.4, 
-                          jointFit.5, jointFit.6, jointFit.7, jointFit.8, jointFit.9)
-
-
-#summary(jointFit.1)
-
-#coefficients 
-
-coef(jointFit.1) #this is a list
-
-jointFit.1[["statistics"]][["Mean"]][["gammas"]] #This is numeric
-
-#SD
-
-jointFit.1[["statistics"]][["SD"]][["gammas"]] #This is numeric
-
-#Standard error
-
-jointFit.1[["statistics"]][["SE"]][["gammas"]] #This is numeric
-
-
-#-------create list to store coef SD SE-----
-
-# Initialize lists to store coefficients, SD, and SE
-coefficients_list <- list()
-sd_list <- list()
-se_list <- list()
-
-# Loop through the 9 models
-for (i in 1:9) {
-  # Extract coefficients
-  coefficients <- joint_models_list[[i]][["statistics"]][["Mean"]][["gammas"]]
-  
-  # Extract SD
-  sd <- joint_models_list[[i]][["statistics"]][["SD"]][["gammas"]]
-  
-  # Extract SE
-  se <- joint_models_list[[i]][["statistics"]][["SE"]][["gammas"]]
-  
-  # Append to respective lists
-  coefficients_list[[i]] <- coefficients
-  sd_list[[i]] <- sd
-  se_list[[i]] <- se
-}
-
-
-#-----Pooled coefficients------
-
-# Initialize lists to store pooled coefficients 
-pooled_coefficients <- numeric(length(coefficients_list[[1]]))
-
-# Loop through each predictor and apply Rubin's rules
-for (j in seq_along(coefficients_list[[1]])) {
-  # Calculate pooled estimate for each parameter
-  pooled_coefficients[j] <- mean(sapply(coefficients_list, function(coeff) coeff[j]))
-}
-
-# Pooled coefficients
-pooled_coefficients
-
-
-#-----Calculate the within-imputation variance (W) standard deviations-----
-
-
-# Calculate the number of predictors
-num_predictors <- length(coefficients_list[[1]])
-
-# Initialize a vector to store the within-imputation variances (W) for each predictor
-within_imputation_variances <- numeric(num_predictors)
-
-# Loop through each predictor (parameter)
-for (j in 1:num_predictors) {
-  # Calculate the within-imputation variance (W) for the current predictor
-  within_imputation_variances[j] <- sum(sapply(sd_list, function(sd) sd[j]^2)) / 9
-}
-
-
-#------Calculate the between-imputation variance (B)------
-
-
-coefficients_list[[1]][1]
-
-
-# Initialize a vector to store the between-imputation variances (B) for each predictor
-between_imputation_variances <- numeric(length(coefficients_list[[1]]))
-
-# Loop through each predictor
-for (j in seq_along(coefficients_list[[1]])) {
-  # Initialize a variable to store the sum of squared differences for the current predictor
-  sum_squared_diff <- 0
-  
-  # Calculate the sum of squared differences for the current predictor across all imputed datasets
-  for (i in 1:9) {
-    sum_squared_diff <- sum_squared_diff + (coefficients_list[[i]][j] - pooled_coefficients[j])^2
-  }
-  
-  # Calculate the between-imputation variance (B) for the current predictor
-  between_imputation_variances[j] <- sum_squared_diff / (9 - 1)
-}
-
-
-#------Pooled standard deviations----
-
-# Initialize a vector to store the total variances (T) for each predictor
-total_variances <- numeric(length(coefficients_list[[1]]))
-
-# Loop through each predictor
-for (j in seq_along(coefficients_list[[1]])) {
-  # Calculate the total variance (T) for the current predictor
-  total_variances[j] <- within_imputation_variances[j]+(1+1/9)*between_imputation_variances[j] 
-  #The imputation times is 9
-}
-
-# Calculate the standard deviations (SD) for each predictor from the total variances
-pooled_sd <- sqrt(total_variances)
-
-
-
-
-#-----Calculate the within-imputation variance (W) Standard errors-----
-
-
-# Calculate the number of predictors
-num_predictors <- length(coefficients_list[[1]])
-
-# Initialize a vector to store the within-imputation variances (W) for each predictor
-within_imputation_variances_se <- numeric(num_predictors)
-
-# Loop through each predictor (parameter)
-for (j in 1:num_predictors) {
-  # Calculate the within-imputation variance (W) for the current predictor
-  within_imputation_variances_se[j] <- sum(sapply(se_list, function(se) se[j]^2)) / 9
-}
-
-
-#------Pooled standard errors----
-
-# Initialize a vector to store the total variances (T) for each predictor
-total_variances_se <- numeric(length(coefficients_list[[1]]))
-
-# Loop through each predictor
-for (j in seq_along(coefficients_list[[1]])) {
-  # Calculate the total variance (T) for the current predictor
-  total_variances_se[j] <- within_imputation_variances_se[j]+(1+1/9)*between_imputation_variances[j] 
-  #The imputation times is 9
-}
-
-# Calculate the standard deviations (SD) for each predictor from the total variances
-pooled_se <- sqrt(total_variances_se)
-
-
-
-```
-
-```{r Summary the pool estimated}
-
-#pooled_coefficients
-#pooled_sd
-#pooled_se
-
-#age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex
-
-# Create a vector of predictor names
-predictor_names <- c("age10", "sex", "yearseducation", "mdsupdrs3.10", "hybl", "hallucinationsindex", "cognitiveindex")
-
-# Create a data frame with row names as predictors
-Pool_estimate <- data.frame(Predictor = predictor_names)
-
-# Add columns for pooled coefficient, pooled sd, and pooled se
-Pool_estimate$Pooled_Coefficient <- pooled_coefficients
-Pool_estimate$Pooled_SD <- pooled_sd
-Pool_estimate$Pooled_SE <- pooled_se
-
-# Display the resulting dataframe
-Pool_estimate 
-
-```
-
-
-```{r Not run need to figure out how to get the CI and pool the estimate of mmse}
-
-
-#Try to get the CI
-
-summary(jointFit.1)
-
-#degree of freedom
-
-r<-((1+1/9)*between_imputation_variances)/(within_imputation_variances)
-
-(9-1)*(1+1/r)^(2)
-
-qt(0.975,df=1265334.6818)
-qt(0.025,df=1265334.6818)
-
-
-
-```
-
-
-```{r Not run list try}
-
-
-#data.baseline.list<-list(data.baseline.1,data.baseline.2,data.baseline.3,data.baseline.4,data.baseline.5,data.baseline.6,data.baseline.7,data.baseline.8,data.baseline.9)
-
-#data_long.list<-list(data_long.1,data_long.2,data_long.3,data_long.4,data_long.5,data_long.6,data_long.7,data_long.8,data_long.9)
-
-
-summary(jointFit.1)
-
-(0.8218-0.5373)/0.009693437
-
-(0.08617068+0.15618253)/ 0.00726866
-
-(0.8065-0.5295)/ 0.009693437  
-
-(0.0834+0.1627)/0.006762524
-
-
-jointFit.1[["statistics"]][["CI_upp"]]["gammas"]
-jointFit.1[["statistics"]][["Mean"]]["gammas"]
-jointFit.2[["statistics"]][["SE"]]["gammas"]
-
-summary(jointFit.2)
-
-ranef(jointFit.1)
-
-
-```
-
-
-```{r Not run}
-
-# Loop through each study to extract and plot baseline hazard
-for (study_id in study_names) {
-  study_data <- subset(data.baseline.1, study == study_id)
-  cox_model <- coxph(Surv(years, cens) ~ age10 + sex + mdsupdrs3.10 + hybl + hallucinationsindex + cognitiveindex, data = study_data, x = TRUE, model = TRUE)
-  baseline_hazard <- basehaz(cox_model)
-  baseline_hazard$hazard <- diff(c(0, baseline_hazard$hazard)) / diff(c(0, baseline_hazard$time))
-  
-  # Plot the baseline hazard for the current study
-  plot(baseline_hazard$time, baseline_hazard$hazard, type = "s", xlab = "Time", ylab = "Hazard", main = paste("Baseline Hazard - Study", study_id))
-}
-
-
-
-```
-
-```{r Not run Note for next step}
-
-#Need to think about how to pool the average estimate
-
-#Need to do
-
-```

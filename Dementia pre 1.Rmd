@@ -31,7 +31,7 @@ library(JMbayes2)
 ```
 
 ```{r data}
-data<-read_dta("PICC dynamic prediction v3.dta")
+data<-read_dta("PICC dynamic prediction v4.dta")
 
 write.csv(data,"data.csv",row.names = F)  # need to be csv file, otherwise it fails
 datanew<-read.csv("data.csv")  #import data again
@@ -196,13 +196,14 @@ data1$years<-data1$tt/365.25  #1222 rows
 data1%>%
   filter(tt==0)%>%
   group_by(study)%>%
-  count()            #CamPalGN 21 ICICLE 3 NYPUM 8 ParkWest 4 PICNICS 29 PINE 14 
+  count(cens)            #cens=0 CamPalGN 21 ICICLE 3 NYPUM 8 ParkWest 3 PICNICS 29 PINE 6
 
+#need to be specify what is the reason they been removed
 
 data1%>%
   filter(tt<0)%>%
   group_by(study)%>%
-  count()          #PINE 62, already has dementia before baseline visit
+  count()          #PINE 4, already has dementia before baseline visit
 
 
 data1[is.na(data1$years),] #One patients in PICNICS, originalid==PCP66, no censoring date, so have to remove
@@ -213,7 +214,7 @@ data1<-data1%>%
 
 data1%>%
   group_by(study)%>%
-  count()
+  count() #882 after remove ICICLE
 
 
 data1%>%
@@ -224,10 +225,6 @@ data1%>%
 data1%>%
   group_by(study)%>%
   count()
-
-#21+8+4+29+14+62 #Without ICICE, so CamPalGN n=21; NYPUM n=8; ParkWest n=4; PICNICS=29+1; PINE n=76
-
-
 ```
 
 
@@ -268,26 +265,26 @@ data.rename.noIC<-data1.10%>%  #rember to change to data1.10.remove
 explanatory<-c("Smoking","Years of education","MDS-UPDRS part3","Hoehn and Yahr Scale","Hallucinations","Cognitive symptoms") 
 dependent<- c("cens","tt") #"Smoking"
 
-#png("missingp.png",width = 3000,height =2000,res = 400)
+png("missingp.png",width = 3000,height =2000,res = 400)
 
 mispattern<-data.rename.noIC %>% 
   missing_pattern(explanatory)
 
-#dev.off()
+dev.off()
 
 #---check how many missing at least one---
 
-colnames(data1.10[,c(8,9,10,51,52)])
+colnames(data1.10[,c(8,9,10,53,54)])
 
-nrow(data1.10[complete.cases(data1.10[,c(8,9,10,51,52)]),])  #816 in data1.10.remove 743 in data1.10.remove without smoking
+nrow(data1.10[complete.cases(data1.10[,c(8,9,10,53,54)]),])  #822 in data1.10
 
-(896-816)/896 #0.09 
+(882-822)/882 #0.07
 
-(808-743)/808 #0.08
+#colnames(data1.10.remove)
 
-colnames(data1.10[,c(9,10,51,52)])
+#nrow(data1.10.remove[complete.cases(data1.10.remove[,c(9,10,53,54)]),]) #827 after remove smoking
 
-
+(878-827)/878
 
 ```
 
@@ -601,8 +598,8 @@ for (i in seq_along(dataset_names)) {
 ```{r cmobine long format dataset 1}
 #-----combine all long tidy------
 
-nrow(years_long.1)  #5460
-nrow(mmse_long.1)   #4779
+nrow(years_long.1)  #5317
+nrow(mmse_long.1)   #4618
 
 
 years_long.new.1<-years_long.1%>%
@@ -668,7 +665,7 @@ for (i in dataset_indices) {
 data_long.1%>%
   group_by(study)%>%
   count(is.na(agebl))
-#6 patints in PINE missing agebl
+#2 patints in PINE missing agebl
 
 data_long.1%>%
   filter(study=="PINE")%>%
@@ -676,7 +673,6 @@ data_long.1%>%
 #idpicc 1170 1235 1261 
 
 #1170 The follow-up time is end in 10 years,patient has mmse value on 11 and 12 years. 
-#1235 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
 #1261 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
 
 #------remove value outside the last seen date-----
@@ -807,9 +803,9 @@ diff_id<-setdiff(unique(data.baseline.2$id),unique(data_long.2$id))
 
 diff_idpicc<-setdiff(unique(data.baseline.2$idpicc),unique(data_long.2$idpicc))
 
-#148 151 174 251 825
+#148 151 174 251 
 #idpicc
-#328 331 354 436 1648
+#328 331 354 436 
 
 data1%>%
   filter(idpicc %in% diff_idpicc)%>%
@@ -942,10 +938,10 @@ data1.10%>%
 
 
 #without the date of death
-data1.10.remove%>%
-  group_by(study)%>%
-  filter(dead==1)%>%  #But know death
-  count()
+#data1.10.remove%>%
+#  group_by(study)%>%
+#  filter(dead==1)%>%  #But know death
+#  count()
 
 data1.10.remove%>%
   group_by(study)%>%
