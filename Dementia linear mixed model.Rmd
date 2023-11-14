@@ -108,6 +108,13 @@ data_long.2.fit<-data_long.2.new%>%
 data.baseline.2.fit<-data.baseline.2%>%
   select(study,idpicc,agebl,sex,yearseducation,mdsupdrspart3bltotalconvertedasa,hybl,hallucinationsindex,cognitiveindex,years,cens)
 
+#try add smoking into the data
+data_long.2.fit<-data_long.2.new%>%
+  select(study,idpicc,agebl,sex,yearseducation,smoking,followupyears,mmse,mdsupdrspart3bltotalconvertedasa,hybl,hallucinationsindex,cognitiveindex,years,cens)
+
+data.baseline.2.fit<-data.baseline.2%>%
+  select(study,idpicc,agebl,sex,yearseducation,smoking,mdsupdrspart3bltotalconvertedasa,hybl,hallucinationsindex,cognitiveindex,years,cens)
+
 
 #check the study levels
 
@@ -186,30 +193,95 @@ BIC(lme.6)
 
 lme<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.fit)
 
-#Stratified Cox
+#----Stratified Cox (not chose)-----
 
-baseline.cox.1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.2.fit, x = TRUE,model = TRUE)
+#baseline.cox.1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+strata(study),data=data.baseline.2.fit, x = TRUE,model = TRUE)
+#jointFit.1<-jm(baseline.cox.1, lme, time_var = "followupyears")
 
-#Study as fixed effect
+
+#---Study as fixed effect----
 
 baseline.cox.2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
 
-#Try to see if the Cox need to have slope or area
-
-#jointFit.1<-jm(baseline.cox.1, lme, time_var = "followupyears") 
-
-#summary(jointFit.1)
+baseline.cox.3<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+study+smoking,data=data.baseline.2.fit, x = TRUE,model = TRUE)
 
 jointFit.2<-jm(baseline.cox.2, lme, time_var = "followupyears") 
 
+jointFit.3<-jm(baseline.cox.3, lme, time_var = "followupyears") 
+
 summary(jointFit.2)
 
-#compare_jm(jointFit.1,jointFit.2)
+#compare_jm(jointFit.2,jointFit.3)
 
 #Chose jointFit.1
 
 
 ```
+
+```{r Cox assumption}
+
+#----Martingale----
+
+rr.0<-residuals(coxph(Surv(years,cens)~1,data=data.baseline.2.fit),type = "martingale")
+
+data.baseline.2.rescheck<-data.baseline.2.fit
+
+data.baseline.2.rescheck$rr.0<-rr.0
+
+ggplot(data.baseline.2.rescheck,aes(agebl,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))
+
+ggplot(data.baseline.2.rescheck,aes(yearseducation,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))
+
+ggplot(data.baseline.2.rescheck,aes(mdsupdrspart3bltotalconvertedasa,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))
+
+ggplot(data.baseline.2.rescheck,aes(hybl,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))
+  
+
+#-----Schoenfeld residuals----
+
+cox.zph(baseline.cox.2) 
+
+test.ph.plot<-cox.zph(baseline.cox.2,transform = "km") 
+
+ggcoxzph(test.ph.plot,var = 1,ylab="Beta(t) for age",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 2,ylab="Beta(t) for sex",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 3,ylab="Beta(t) for education(years)",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 4,ylab="Beta(t) for MDS-UPDRS part3",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 5,ylab="Beta(t) for Hoehn and Yahr",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 6,ylab="Beta(t) for hallucinations",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 7,ylab="Beta(t) for cognitive symptoms",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+
+
+```
+
+
+
 ```{r predict}
 
 #randomly select patient as example to illustrate
@@ -338,34 +410,11 @@ plot(predMMSE.5,predSurv.5,ylab_long = "MMSE",ylab_event = "Cumulative risk of d
 
 #dev.off()
 ```
+
+
+
 ```{r pre IECV}
 
-data_long.2$age10<-data_long.2$agebl/10
-
-data_long.2$mdsupdrs3.10<-data_long.2$mdsupdrspart3bltotalconvertedasa/10
-
-Cam_long<-data_long.2%>%
-  filter(study!="CamPalGN")
-
-Cam.baseline<-data.baseline.2%>%
-  filter(study!="CamPalGN")
-
-Cam.v<-data_long.2%>%
-  filter(study=="CamPalGN")
-
-
-
-#refit model
-
-Cam.cox<-coxph(Surv(years,cens)~age10+sex+yearseducation+mdsupdrs3.10+hybl+hallucinationsindex+cognitiveindex+strata(study),data=Cam.baseline, x = TRUE,model = TRUE)
-
-Cam.lme<-lme(mmse~ sex+agebl+yearseducation, random = ~ followupyears | idpicc, data=Cam_long) 
-
-jointFit.Cam<-jm(Cam.cox, Cam.lme, time_var = "followupyears") 
-
-summary(jointFit.Cam)
-
-tvAUC(jointFit.Cam,Cam.v,Tstart = 3, Dt=1)
 
 ```
 
