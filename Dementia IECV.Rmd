@@ -1,0 +1,150 @@
+---
+title: "IECV dementia"
+output: html_document
+date: "2023-11-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r pre IECV data}
+
+#---Leave PINE study out---
+
+data.baseline.2.v.PINE<-data.baseline.2.fit%>%
+  filter(study!="PINE")
+
+data_long.2.v.PINE<-data_long.2.fit%>%
+  filter(study!="PINE")
+
+data.baseline.2.v.PINE%>%
+  group_by(study)%>%
+  count
+
+#----PINE study---
+
+data.baseline.2.PINE<-data.baseline.2.fit%>%
+  filter(study=="PINE")
+
+data_long.2.PINE<-data_long.2.fit%>%
+  filter(study=="PINE")
+
+
+data.baseline.2.v.PINE$study<-droplevels(data.baseline.2.v.PINE$study)
+data_long.2.v.PINE$study<-droplevels(data_long.2.v.PINE$study)
+
+levels(data.baseline.2.v.PINE$study)
+
+#-----Leave CamPalGN study out----
+
+data.baseline.2.v.Cam<-data.baseline.2.fit%>%
+  filter(study!="CamPalGN")
+
+data_long.2.v.Cam<-data_long.2.fit%>%
+  filter(study!="CamPalGN")
+
+#----CamPalGN study---
+
+data.baseline.2.Cam<-data.baseline.2.fit%>%
+  filter(study=="CamPalGN")
+
+data_long.2.Cam<-data_long.2.fit%>%
+  filter(study=="CamPalGN")
+
+data.baseline.2.v.Cam$study<-droplevels(data.baseline.2.v.Cam$study)
+data_long.2.v.Cam$study<-droplevels(data_long.2.v.Cam$study)
+
+
+```
+
+```{r validate PINE}
+
+#Because I view the leave PINE out data as a whole one, so I don't need study inside?
+#The problem is if I add study inside, the error will occur as the study level is different in the development and validation dataset. 
+
+#----JM in leave PINE out study---
+
+lme.v.PINE<-lme(mmse~ agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.v.PINE)
+
+baseline.cox.v.PINE<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.2.v.PINE, x = TRUE,model = TRUE)
+
+jointFit.v.PINE<-jm(baseline.cox.v.PINE, lme.v.PINE, time_var = "followupyears") 
+
+summary(jointFit.v.PINE)
+
+
+roc.PINE.0<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 0,Dt=3,cores=1L)
+roc.PINE.1<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 1,Dt=3,cores=1L)
+roc.PINE.2<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 2,Dt=3,cores=1L)
+roc.PINE.3<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 3,Dt=3,cores=1L)
+roc.PINE.4<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 4,Dt=3,cores=1L)
+roc.PINE.5<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 5,Dt=3,cores=1L)
+roc.PINE.6<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 6,Dt=3,cores=1L)
+roc.PINE.7<-tvROC(jointFit.v.PINE,newdata =data_long.2.PINE,Tstart = 7,Dt=2.5,cores=1L)
+
+plot(roc.PINE.0, legend = TRUE)
+plot(roc.PINE.1, legend = TRUE)
+plot(roc.PINE.2, legend = TRUE)
+plot(roc.PINE.3, legend = TRUE)
+plot(roc.PINE.4, legend = TRUE)
+plot(roc.PINE.5, legend = TRUE)
+plot(roc.PINE.6, legend = TRUE)
+plot(roc.PINE.7, legend = TRUE)
+
+tvAUC(roc.PINE.0)
+tvAUC(roc.PINE.1)
+tvAUC(roc.PINE.2)
+tvAUC(roc.PINE.3)
+tvAUC(roc.PINE.4)
+tvAUC(roc.PINE.5)
+tvAUC(roc.PINE.6)
+tvAUC(roc.PINE.7)
+
+calibration_plot(jointFit.v.PINE,newdata = data_long.2.PINE,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jointFit.v.PINE,newdata = data_long.2.PINE,Tstart = 2,Dt=3,plot = TRUE)
+
+
+calibration_metrics(jointFit.v.PINE,newdata = data_long.2.PINE,Tstart = 0,Dt=3) #IEI
+
+```
+
+```{r validate CamPalGN}
+
+#Because I view the leave PINE out data as a whole one, so I don't need study inside?
+#The problem is if I add study inside, the error will occur as the study level is different in the development and validation dataset. 
+
+#----JM in leave PINE out study---
+
+lme.v.Cam<-lme(mmse~ agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.2.v.Cam)
+
+baseline.cox.v.Cam<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex,data=data.baseline.2.v.Cam, x = TRUE,model = TRUE)
+
+jointFit.v.Cam<-jm(baseline.cox.v.Cam, lme.v.Cam, time_var = "followupyears") 
+
+summary(jointFit.v.Cam)
+
+
+roc.Cam.0<-tvROC(jointFit.v.Cam,newdata =data_long.2.Cam,Tstart = 0,Dt=3,cores=1L)
+roc.Cam.1<-tvROC(jointFit.v.Cam,newdata =data_long.2.Cam,Tstart = 1,Dt=3,cores=1L)
+roc.Cam.2<-tvROC(jointFit.v.Cam,newdata =data_long.2.Cam,Tstart = 2,Dt=3,cores=1L)
+roc.Cam.3<-tvROC(jointFit.v.Cam,newdata =data_long.2.Cam,Tstart = 3,Dt=3,cores=1L)
+roc.Cam.4<-tvROC(jointFit.v.Cam,newdata =data_long.2.Cam,Tstart = 4,Dt=3,cores=1L)
+roc.Cam.5<-tvROC(jointFit.v.Cam,newdata =data_long.2.Cam,Tstart = 5,Dt=3,cores=1L)
+roc.Cam.6<-tvROC(jointFit.v.Cam,newdata =data_long.2.Cam,Tstart = 6,Dt=3,cores=1L)
+
+
+tvAUC(roc.Cam.0)
+tvAUC(roc.Cam.1)
+tvAUC(roc.Cam.2)
+tvAUC(roc.Cam.3)
+tvAUC(roc.Cam.4)
+tvAUC(roc.Cam.5)
+tvAUC(roc.Cam.6)
+
+
+calibration_plot(jointFit.v.Cam,newdata = data_long.2.Cam,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jointFit.v.Cam,newdata = data_long.2.PINE,Tstart = 6,Dt=3,plot = TRUE)
+
+
+```

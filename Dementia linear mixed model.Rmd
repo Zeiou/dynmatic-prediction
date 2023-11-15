@@ -211,82 +211,33 @@ jointFit.3<-jm(baseline.cox.3, lme, time_var = "followupyears")
 
 summary(jointFit.2)
 
-#compare_jm(jointFit.2,jointFit.3)
+#
+
+compare_jm(jointFit.2,jointFit.3)
 
 #Chose jointFit.1
 
+#----update JM----
 
-```
+#jointFit.2.update1<- update(jointFit.2,
+#                       functional_forms = ~ value(mmse) * study)
 
-```{r Cox assumption}
+#summary(jointFit.2.update1)
 
-#----Martingale----
+#compare_jm(jointFit.2,jointFit.2.update1)
 
-rr.0<-residuals(coxph(Surv(years,cens)~1,data=data.baseline.2.fit),type = "martingale")
+#The update one isn't congervence cannot use
 
-data.baseline.2.rescheck<-data.baseline.2.fit
-
-data.baseline.2.rescheck$rr.0<-rr.0
-
-ggplot(data.baseline.2.rescheck,aes(agebl,rr.0))+
-  geom_point()+
-  geom_smooth(method = "loess",se=T)+
-  ylim(c(-1.5,1.5))
-
-ggplot(data.baseline.2.rescheck,aes(yearseducation,rr.0))+
-  geom_point()+
-  geom_smooth(method = "loess",se=T)+
-  ylim(c(-1.5,1.5))
-
-ggplot(data.baseline.2.rescheck,aes(mdsupdrspart3bltotalconvertedasa,rr.0))+
-  geom_point()+
-  geom_smooth(method = "loess",se=T)+
-  ylim(c(-1.5,1.5))
-
-ggplot(data.baseline.2.rescheck,aes(hybl,rr.0))+
-  geom_point()+
-  geom_smooth(method = "loess",se=T)+
-  ylim(c(-1.5,1.5))
-  
-
-#-----Schoenfeld residuals----
-
-cox.zph(baseline.cox.2) 
-
-test.ph.plot<-cox.zph(baseline.cox.2,transform = "km") 
-
-ggcoxzph(test.ph.plot,var = 1,ylab="Beta(t) for age",caption = NULL)+
-  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
-
-ggcoxzph(test.ph.plot,var = 2,ylab="Beta(t) for sex",caption = NULL)+
-  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
-
-ggcoxzph(test.ph.plot,var = 3,ylab="Beta(t) for education(years)",caption = NULL)+
-  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
-
-ggcoxzph(test.ph.plot,var = 4,ylab="Beta(t) for MDS-UPDRS part3",caption = NULL)+
-  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
-
-ggcoxzph(test.ph.plot,var = 5,ylab="Beta(t) for Hoehn and Yahr",caption = NULL)+
-  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
-
-ggcoxzph(test.ph.plot,var = 6,ylab="Beta(t) for hallucinations",caption = NULL)+
-  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
-
-ggcoxzph(test.ph.plot,var = 7,ylab="Beta(t) for cognitive symptoms",caption = NULL)+
-  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
-
+traceplot(jointFit.2)
 
 
 ```
 
-
-
-```{r predict}
+```{r predict 1131}
 
 #randomly select patient as example to illustrate
 
-predict.data<-data_long.2.fit[data_long.2.fit$idpicc == 1131,]  #event year is 6
+predict.data<-data_long.2.fit[data_long.2.fit$idpicc == 1131,]  #idpicc 1131 event year is 6
 
 #----Only baseline information-----
 
@@ -310,7 +261,7 @@ predict.data.time.1<-predict.data[predict.data$followupyears<2,]
 
 predict.data.time.1$cens<-0 #not event
 
-predict.data.time.1$years<-1.2 #predict time at 0 years
+predict.data.time.1$years<-1.2 
 
 predMMSE.1<-predict(jointFit.2,newdata = predict.data.time.1,times = seq(1.2,4, length.out=20),return_newdata = T) #for future time point
 
@@ -326,7 +277,7 @@ predict.data.time.2<-predict.data[predict.data$followupyears<3,]
 
 predict.data.time.2$cens<-0 #not event
 
-predict.data.time.2$years<-2.1 #predict time at 0 years
+predict.data.time.2$years<-2.1 
 
 predMMSE.2<-predict(jointFit.2,newdata = predict.data.time.2,times = seq(2.1,5, length.out=20),return_newdata = T) #for future time point
 
@@ -343,7 +294,7 @@ predict.data.time.3<-predict.data[predict.data$followupyears<4,]
 
 predict.data.time.3$cens<-0 #not event
 
-predict.data.time.3$years<-3.1 #predict time at 0 years
+predict.data.time.3$years<-3.1 
 
 #predict for longitudinal outcomes
 
@@ -360,7 +311,7 @@ predict.data.time.4<-predict.data[predict.data$followupyears<5,]
 
 predict.data.time.4$cens<-0 #not event
 
-predict.data.time.4$years<-4 #predict time at 0 years
+predict.data.time.4$years<-4 
 
 #predict for longitudinal outcomes
 
@@ -377,7 +328,7 @@ predict.data.time.5<-predict.data[predict.data$followupyears<6,]
 
 predict.data.time.5$cens<-0 #not event
 
-predict.data.time.5$years<-5.04 #predict time at 0 years
+predict.data.time.5$years<-5.04 
 
 #predict for longitudinal outcomes
 
@@ -412,10 +363,561 @@ plot(predMMSE.5,predSurv.5,ylab_long = "MMSE",ylab_event = "Cumulative risk of d
 ```
 
 
+```{r predict 79}
 
-```{r pre IECV}
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.2.fit[data_long.2.fit$idpicc == 79,]  #idpicc 14 event year is 7
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predMMSE.0<-predict(jointFit.2,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.2,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.0,predSurv.0)
+
+
+#-----From baseline up to 3 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-3 
+
+predMMSE.2<-predict(jointFit.2,newdata = predict.data.time.2,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.2,newdata = predict.data.time.2,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.2,predSurv.2)
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4.9 
+
+#predict for longitudinal outcomes
+
+predMMSE.4<-predict(jointFit.2,newdata = predict.data.time.4,times = seq(4.9,7.9, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jointFit.2,newdata = predict.data.time.4,process = "event",times = seq(4.9,7.9, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.4,predSurv.4)
+
+
+#------From baseline up to 7 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<7,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-6.8
+
+#predict for longitudinal outcomes
+
+predMMSE.5<-predict(jointFit.2,newdata = predict.data.time.5,times = seq(6.8,9.8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.2,newdata = predict.data.time.5,process = "event",times = seq(6.8,9.8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.5,predSurv.5)
+
+
+#----Arrange plot----
+
+png("JMpred1.Cam.png",width = 4000,height =1500,res = 400)
+
+par(mfrow=c(1,4))
+
+plot(predMMSE.0,predSurv.0,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.2,predSurv.2,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.4,predSurv.4,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.5,predSurv.5,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+
+dev.off()
+
+data%>%
+  filter(idpicc==79)
+```
+
+
+```{r predict 348}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.2.fit[data_long.2.fit$idpicc == 348,]  #idpicc 1131 event year is 9
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predMMSE.0<-predict(jointFit.2,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.2,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.0,predSurv.0)
+
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1 
+
+predMMSE.1<-predict(jointFit.2,newdata = predict.data.time.1,times = seq(1,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jointFit.2,newdata = predict.data.time.1,process = "event",times = seq(1,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.1,predSurv.1)
+
+
+#-----From baseline up to 2 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2 
+
+predMMSE.2<-predict(jointFit.2,newdata = predict.data.time.2,times = seq(2,5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.2,newdata = predict.data.time.2,process = "event",times = seq(2,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.2,predSurv.2)
+
+
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3.04 
+
+#predict for longitudinal outcomes
+
+predMMSE.3<-predict(jointFit.2,newdata = predict.data.time.3,times = seq(3.04,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jointFit.2,newdata = predict.data.time.3,process = "event",times = seq(3.04,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.3,predSurv.3)
+
+
+#------From baseline up to 4 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4.1 
+
+#predict for longitudinal outcomes
+
+predMMSE.4<-predict(jointFit.2,newdata = predict.data.time.4,times = seq(4.1,7, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jointFit.2,newdata = predict.data.time.4,process = "event",times = seq(4.1,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.4,predSurv.4)
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5.04 
+
+#predict for longitudinal outcomes
+
+predMMSE.5<-predict(jointFit.2,newdata = predict.data.time.5,times = seq(5.04,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.2,newdata = predict.data.time.5,process = "event",times = seq(5.04,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.5,predSurv.5)
+
+
+#------From baseline up to 6 years-----
+
+predict.data.time.6<-predict.data[predict.data$followupyears<7,] 
+
+predict.data.time.6$cens<-0 #not event
+
+predict.data.time.6$years<-6.04 
+
+#predict for longitudinal outcomes
+
+predMMSE.6<-predict(jointFit.2,newdata = predict.data.time.6,times = seq(6.04,9, length.out=20),return_newdata = T) #for future time point
+
+predSurv.6<-predict(jointFit.2,newdata = predict.data.time.6,process = "event",times = seq(6.04,9, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.6,predSurv.6)
+
+
+#------From baseline up to 8 years-----
+
+predict.data.time.8<-predict.data[predict.data$followupyears<8,] 
+
+predict.data.time.8$cens<-0 #not event
+
+predict.data.time.8$years<-8 
+
+#predict for longitudinal outcomes
+
+predMMSE.8<-predict(jointFit.2,newdata = predict.data.time.8,times = seq(8,10, length.out=20),return_newdata = T) #for future time point
+
+predSurv.8<-predict(jointFit.2,newdata = predict.data.time.8,process = "event",times = seq(8,10, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.8,predSurv.8)
+
+
+#----Arrange plot----
+
+png("JMpred1.NY.png",width = 4000,height =1500,res = 400)
+
+par(mfrow=c(1,4))
+
+plot(predMMSE.0,predSurv.0,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.1,predSurv.1,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.2,predSurv.2,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.3,predSurv.3,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+
+dev.off()
+
+png("JMpred2.NY.png",width = 4000,height =1500,res = 400)
+
+par(mfrow=c(1,4))
+
+plot(predMMSE.4,predSurv.4,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.5,predSurv.5,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.6,predSurv.6,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.8,predSurv.8,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+
+dev.off()
+
+data1%>%
+  filter(idpicc==348)
+```
+
+
+
+```{r predict 492}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.2.fit[data_long.2.fit$idpicc == 492,]  #idpicc 1131 event year is 9
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predMMSE.0<-predict(jointFit.2,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.2,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.0,predSurv.0)
+
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1 
+
+predMMSE.1<-predict(jointFit.2,newdata = predict.data.time.1,times = seq(1,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jointFit.2,newdata = predict.data.time.1,process = "event",times = seq(1,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.1,predSurv.1)
+
+
+#-----From baseline up to 3 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-3 
+
+predMMSE.2<-predict(jointFit.2,newdata = predict.data.time.2,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.2,newdata = predict.data.time.2,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.2,predSurv.2)
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5 
+
+#predict for longitudinal outcomes
+
+predMMSE.5<-predict(jointFit.2,newdata = predict.data.time.5,times = seq(5,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.2,newdata = predict.data.time.5,process = "event",times = seq(5,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.5,predSurv.5)
+
+
+
+#----Arrange plot----
+
+png("JMpred1.PA.png",width = 4000,height =1500,res = 400)
+
+par(mfrow=c(1,4))
+
+plot(predMMSE.0,predSurv.0,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.1,predSurv.1,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.2,predSurv.2,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.5,predSurv.5,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+
+dev.off()
+
+
+data1%>%
+  filter(idpicc==492)
+```
+
+
+
+
+```{r predict 885}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.2.fit[data_long.2.fit$idpicc == 885,]  #idpicc 885 event year is 6
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predMMSE.0<-predict(jointFit.2,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.2,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.0,predSurv.0)
+
+#-----From baseline up to 3 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2.4 
+
+predMMSE.2<-predict(jointFit.2,newdata = predict.data.time.2,times = seq(2.4,5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.2,newdata = predict.data.time.2,process = "event",times = seq(2.4,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.2,predSurv.2)
+
+
+#------From baseline up to 4 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-3.9 
+
+#predict for longitudinal outcomes
+
+predMMSE.4<-predict(jointFit.2,newdata = predict.data.time.4,times = seq(3.9,7, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jointFit.2,newdata = predict.data.time.4,process = "event",times = seq(3.9,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.4,predSurv.4)
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5.5 
+
+#predict for longitudinal outcomes
+
+predMMSE.5<-predict(jointFit.2,newdata = predict.data.time.5,times = seq(5.5,8.5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.2,newdata = predict.data.time.5,process = "event",times = seq(5.5,8.5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.5,predSurv.5)
+
+
+
+#----Arrange plot----
+
+png("JMpred1.PIC.png",width = 4000,height =1500,res = 400)
+
+par(mfrow=c(1,4))
+
+plot(predMMSE.0,predSurv.0,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.2,predSurv.2,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.4,predSurv.4,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+plot(predMMSE.5,predSurv.5,ylab_long = "MMSE",ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1.5)
+
+dev.off()
+
+
+data1%>%
+  filter(idpicc==885)
+```
+
+
+
+
+
+
+
+
+
+
+```{r Not run Cox assumption}
+
+#----Martingale----
+
+rr.0<-residuals(coxph(Surv(years,cens)~1,data=data.baseline.2.fit),type = "martingale")
+
+data.baseline.2.rescheck<-data.baseline.2.fit
+
+data.baseline.2.rescheck$rr.0<-rr.0
+
+p1<-ggplot(data.baseline.2.rescheck,aes(agebl,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))+
+  labs(y="Martingale residuals",x="Age")
+
+p2<-ggplot(data.baseline.2.rescheck,aes(yearseducation,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))+
+  labs(y="Martingale residuals",x="Education(years)")
+
+p3<-ggplot(data.baseline.2.rescheck,aes(mdsupdrspart3bltotalconvertedasa,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))+
+  labs(y="Martingale residuals",x="MDS-UPDRS part3")
+
+p4<-ggplot(data.baseline.2.rescheck,aes(hybl,rr.0))+
+  geom_point()+
+  geom_smooth(method = "loess",se=T)+
+  ylim(c(-1.5,1.5))+
+  labs(y="Martingale residuals",x="Hoehn and Yahr")
+
+
+png("Martingale.png",width = 4000,height =1500,res = 400)
+p1+p2+p3
+dev.off()
+
+#-----Schoenfeld residuals----
+
+cox.zph(baseline.cox.2) 
+
+test.ph.plot<-cox.zph(baseline.cox.2,transform = "km") 
+
+ggcoxzph(test.ph.plot,var = 1,ylab="Beta(t) for age",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 2,ylab="Beta(t) for sex",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 3,ylab="Beta(t) for education(years)",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 4,ylab="Beta(t) for MDS-UPDRS part3",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 5,ylab="Beta(t) for Hoehn and Yahr",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 6,ylab="Beta(t) for hallucinations",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
+ggcoxzph(test.ph.plot,var = 7,ylab="Beta(t) for cognitive symptoms",caption = NULL)+
+  theme_survminer(font.main = 12,font.y = 12,font.x = 12,axis.text.x = element_text(size = 1))
+
 
 
 ```
+
+```{r Not run compare JM}
+
+baseline.cox.2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
+
+baseline.cox.4<-coxph(Surv(years,cens)~rcs(agebl,3)+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
+
+baseline.cox.5<-coxph(Surv(years,cens)~agebl+sex+rcs(yearseducation,3)+mdsupdrspart3bltotalconvertedasa+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
+
+baseline.cox.6<-coxph(Surv(years,cens)~agebl+sex+yearseducation+rcs(mdsupdrspart3bltotalconvertedasa,3)+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
+
+baseline.cox.7<-coxph(Surv(years,cens)~rcs(agebl,3)+sex+yearseducation+rcs(mdsupdrspart3bltotalconvertedasa,3)+hybl+hallucinationsindex+cognitiveindex+study,data=data.baseline.2.fit, x = TRUE,model = TRUE)
+
+jointFit.4<-jm(baseline.cox.4, lme, time_var = "followupyears") 
+
+jointFit.5<-jm(baseline.cox.5, lme, time_var = "followupyears") 
+
+jointFit.6<-jm(baseline.cox.6, lme, time_var = "followupyears") 
+
+jointFit.7<-jm(baseline.cox.7, lme, time_var = "followupyears") 
+
+#
+
+compare_jm(jointFit.2,jointFit.4,jointFit.5,jointFit.6,jointFit.7)
+
+summary(jointFit.7)
+
+
+#Chose joint7
+
+
+```
+
+
+
 
 
