@@ -554,15 +554,350 @@ data1.10.up%>%
 #4 missing years of education had event
 #3 missing smoking had event
 
-#We impute the missing value with the impuation value of the second impuation dataset as in the previous analysis
+#-----Impute missing data-----
+
+#We impute the missing value with the impuation value of the second impuation dataset as in the previous analysis 
+#Need to run the imputation first
+
+data1.10.up%>%
+  filter(is.na(smoking))
+
+#Missing MDS-UPDRS idpicc 633 726 759 822 830 831 1246
+
+#imp3.new%>%
+#  filter(Imputation==2)%>%
+#  filter(idpicc==1246)%>%
+#  select(mdsupdrspart3bltotalconvertedasa)
+
+data1.10.up[data1.10.up$idpicc==633,]$mdsupdrspart3bltotalconvertedasa<-9.177631	
+data1.10.up[data1.10.up$idpicc==726,]$mdsupdrspart3bltotalconvertedasa<-18.94427
+data1.10.up[data1.10.up$idpicc==759,]$mdsupdrspart3bltotalconvertedasa<-37.19017
+data1.10.up[data1.10.up$idpicc==822,]$mdsupdrspart3bltotalconvertedasa<-64.63385
+data1.10.up[data1.10.up$idpicc==830,]$mdsupdrspart3bltotalconvertedasa<-28.18615
+data1.10.up[data1.10.up$idpicc==831,]$mdsupdrspart3bltotalconvertedasa<-28.70094
+data1.10.up[data1.10.up$idpicc==1246,]$mdsupdrspart3bltotalconvertedasa<-50.15601	
+
+#Missing years of education idpicc 10 48 90 111 324 329 350 384 1116 1118 1121 1143
+
+#imp3.new%>%
+#  filter(Imputation==2)%>%
+#  filter(idpicc==329)%>%
+#  select(yearseducation)
+
+data1.10.up[data1.10.up$idpicc==10,]$yearseducation<-8.825283	
+data1.10.up[data1.10.up$idpicc==48,]$yearseducation<-8.231928
+data1.10.up[data1.10.up$idpicc==90,]$yearseducation<-11.89748		
+data1.10.up[data1.10.up$idpicc==111,]$yearseducation<-10.35272		
+data1.10.up[data1.10.up$idpicc==324,]$yearseducation<-13.94519	
+data1.10.up[data1.10.up$idpicc==329,]$yearseducation<-19.00656	
+data1.10.up[data1.10.up$idpicc==350,]$yearseducation<-6.584745	
+data1.10.up[data1.10.up$idpicc==384,]$yearseducation<-9.084082		
+data1.10.up[data1.10.up$idpicc==1116,]$yearseducation<-9.227734		
+data1.10.up[data1.10.up$idpicc==1118,]$yearseducation<-11.02249			
+data1.10.up[data1.10.up$idpicc==1121,]$yearseducation<-14.41573	
+data1.10.up[data1.10.up$idpicc==1143,]$yearseducation<-5.652798		
+
+#Missing smoking idpicc 637 662 680 683 686 717 737 810 847 
+
+#imp3.new%>%
+#  filter(Imputation==2)%>%
+#  filter(idpicc==847)%>%
+#  select(smoking)
+
+#class(imp3.new$smoking)
+
+data1.10.up[data1.10.up$idpicc==637,]$smoking<-"no"
+data1.10.up[data1.10.up$idpicc==662,]$smoking<-"no"
+data1.10.up[data1.10.up$idpicc==680,]$smoking<-"no"
+data1.10.up[data1.10.up$idpicc==683,]$smoking<-"no"
+data1.10.up[data1.10.up$idpicc==686,]$smoking<-"no"
+data1.10.up[data1.10.up$idpicc==717,]$smoking<-"no"
+data1.10.up[data1.10.up$idpicc==737,]$smoking<-"yes"
+data1.10.up[data1.10.up$idpicc==810,]$smoking<-"no"
+data1.10.up[data1.10.up$idpicc==847,]$smoking<-"no"
 
 
+```
+
+
+```{r change long format data}
+
+#Now we have completed baseline variable in data1.10.up
+
+#-----create follow-up times in years----
+
+
+data1.10.up$year0<-0
+
+data1.10.up$year1<-as.Date(as.character(data1.10.up$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year1<-as.numeric(data1.10.up$year1)/365.25
+
+data1.10.up$year2<-as.Date(as.character(data1.10.up$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year2<-as.numeric(data1.10.up$year2)/365.25
+
+data1.10.up$year3<-as.Date(as.character(data1.10.up$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year3<-as.numeric(data1.10.up$year3)/365.25
+
+data1.10.up$year4<-as.Date(as.character(data1.10.up$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year4<-as.numeric(data1.10.up$year4)/365.25
+
+data1.10.up$year5<-as.Date(as.character(data1.10.up$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year5<-as.numeric(data1.10.up$year5)/365.25
+
+data1.10.up$year6<-as.Date(as.character(data1.10.up$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year6<-as.numeric(data1.10.up$year6)/365.25
+
+data1.10.up$year7<-as.Date(as.character(data1.10.up$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year7<-as.numeric(data1.10.up$year7)/365.25
+
+data1.10.up$year8<-as.Date(as.character(data1.10.up$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year8<-as.numeric(data1.10.up$year8)/365.25
+
+data1.10.up$year9<-as.Date(as.character(data1.10.up$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year9<-as.numeric(data1.10.up$year9)/365.25
+
+data1.10.up$year10<-as.Date(as.character(data1.10.up$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year10<-as.numeric(data1.10.up$year10)/365.25
+
+data1.10.up$year11<-as.Date(as.character(data1.10.up$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year11<-as.numeric(data1.10.up$year11)/365.25
+
+data1.10.up$year12<-as.Date(as.character(data1.10.up$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year12<-as.numeric(data1.10.up$year12)/365.25
+
+data1.10.up$year13<-as.Date(as.character(data1.10.up$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year13<-as.numeric(data1.10.up$year13)/365.25
+
+data1.10.up$year14<-as.Date(as.character(data1.10.up$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year14<-as.numeric(data1.10.up$year14)/365.25
+
+data1.10.up$year15<-as.Date(as.character(data1.10.up$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year15<-as.numeric(data1.10.up$year15)/365.25
+
+
+#----create year follow-up----
+
+# Perform pivot_longer operation
+years_long.up <- data1.10.up %>%
+    pivot_longer(
+      cols = c(`year0`:`year15`),
+      names_to = "visityear",
+      values_to = "followupyears",
+      values_transform = ~ as.numeric(gsub(",", "", .x)),
+      values_drop_na = TRUE
+    )
+  
+years_long.up%>%
+  select(study,idpicc,visityear,followupyears)
+
+
+#----create MMSE follow-up----
+
+# Select specific columns
+
+MMSE_data.up <- data1.10.up %>%
+    select("study", "idpicc", "originalid", "mmsebltotal",
+           "mmseyr1total", "mmseyr2total", "mmseyr3total", "mmseyr4total",
+           "mmseyr5total", "mmseyr6total", "mmseyr7total", "mmseyr8total",
+           "mmseyr9total", "mmseyr10total", "mmseyr11total", "mmseyr12total")
+  
+# Rename selected columns
+
+colnames(MMSE_data.up)[4:16] <- c("year0","year1", "year2", "year3", "year4",
+                                 "year5", "year6", "year7", "year8",
+                                 "year9", "year10", "year11", "year12")
+  
+# Perform pivot_longer operation
+  mmse_long.up <- MMSE_data.up %>%
+    pivot_longer(
+      cols = `year0`:`year12`,
+      names_to = "visityear",
+      values_to = "mmse",
+      values_transform = ~ as.numeric(gsub(",", "", .x)),
+      values_drop_na = TRUE
+    )
+  
+
+#----create cognitive symptoms follow-up----
+
+cogni_data.up<-data1.10.up%>%
+    select("study", "idpicc", "originalid","cognitivebl","cognitiveyr1","cognitiveyr2",
+           "cognitiveyr3","cognitiveyr4","cognitiveyr5","cognitiveyr6","cognitiveyr7",
+           "cognitiveyr8","cognitiveyr9","cognitiveyr10","cognitiveyr11")
+  
+# Rename selected columns
+
+colnames(cogni_data.up)[4:15] <- c("year0","year1", "year2", "year3", "year4",
+                                 "year5", "year6", "year7", "year8",
+                                 "year9", "year10", "year11")
+  
+# Perform pivot_longer operation
+  cogni_long.up <- cogni_data.up %>%
+    pivot_longer(
+      cols = `year0`:`year11`,
+      names_to = "visityear",
+      values_to = "cognitive",
+      values_transform = ~ as.factor(gsub(",", "", .x)), #As it is factor, use as.factor
+      values_drop_na = TRUE
+    )
+
+  
+class(cogni_long.up$cognitive)
+
+
+#----create hallucination follow-up----
+
+hallucina_data.up<-data1.10.up%>%
+    select("study", "idpicc", "originalid","hallucinationsbl","hallucinationsyr1","hallucinationsyr2",
+           "hallucinationsyr3","hallucinationsyr4","hallucinationsyr5","hallucinationsyr6",
+           "hallucinationsyr7","hallucinationsyr8","hallucinationsyr9","hallucinationsyr10","hallucinationsyr11")
+
+# Rename selected columns
+
+colnames(hallucina_data.up)[4:15] <- c("year0","year1", "year2", "year3", "year4",
+                                 "year5", "year6", "year7", "year8",
+                                 "year9", "year10", "year11")
+  
+# Perform pivot_longer operation
+  hallucina_long.up <- hallucina_data.up %>%
+    pivot_longer(
+      cols = `year0`:`year11`,
+      names_to = "visityear",
+      values_to = "hallucination",
+      values_transform = ~ as.factor(gsub(",", "", .x)), #As it is factor, use as.factor
+      values_drop_na = TRUE
+    )
+
+class(hallucina_long.up$hallucination)
+  
+```
+
+```{r combine long format}
+nrow(years_long.up)  #5317
+nrow(mmse_long.up)   #4618
+nrow(cogni_long.up)  #5179
+nrow(hallucina_long.up) #5187
+
+years_long.up.new<-years_long.up%>%
+  select("study","idpicc","originalid",
+         "agebl","sex","hybl",
+         "smoking","yearseducation","mdsupdrspart3bltotalconvertedasa",
+         "cens","years","followupyears","visityear")
+
+
+mmse_long.up.new<-mmse_long.up%>%
+  select("study","idpicc","visityear","mmse")
+
+data_long.up.1<-merge(years_long.up.new, mmse_long.up.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long.up.1<-data_long.up.1[order(data_long.up.1$id,data_long.up.1$visityear), ]
+
+cogni_long.up.new<-cogni_long.up%>%
+  select("study","idpicc","visityear","cognitive")
+
+data_long.up.2<-merge(data_long.up.1,cogni_long.up.new, by= c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long.up.2<-data_long.up.2[order(data_long.up.2$id,data_long.up.2$visityear), ]
+
+
+hallucina_long.up.new<-hallucina_long.up%>%
+  select("study","idpicc","visityear","hallucination")
+
+data_long.up.3<-merge(data_long.up.2,hallucina_long.up.new, by= c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long.up.3<-data_long.up.3[order(data_long.up.3$id,data_long.up.3$visityear), ]
+
+```
+
+```{r check missing data in long data}
+#----check age----
+
+data_long.up.3%>%
+  group_by(study)%>%
+  count(is.na(agebl))
+
+#idpicc 1170 1235 1261 
+
+#1170 The follow-up time is end in 10 years,patient has mmse value on 11 and 12 years. 
+#1261 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
+
+#remove value outside the last seen date
+
+data_long.up.3<-data_long.up.3[!is.na(data_long.up.3$agebl), ]
+
+#check sex
+
+data_long.up.3%>%
+  group_by(study)%>%
+  count(is.na(sex))
+
+```
+
+```{r remove data after event}
+
+#All follow-up records after event need to be removed
+
+data_long.up.3.new<-data_long.up.3%>%
+                  filter(years>followupyears)
+
+```
+
+```{r create baseline data}
+
+data.baseline.up<-data1.10.up%>%
+  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","yearseducation","smoking","cens","years")
+
+levels(data_long.up.3.new$study)
+levels(data.baseline.up$study)
+
+setdiff(unique(data.baseline.up$idpicc),unique(data_long.up.3.new$idpicc)) #No different between this two study
+```
+
+```{r pre data for fit model}
+
+data_long.fit.up<-data_long.up.3.new[complete.cases(data_long.up.3.new),]
+  
+data.baseline.fit.up<-data.baseline.up
+
+diff_idpicc.up<-setdiff(unique(data.baseline.fit.up$idpicc),unique(data_long.fit.up$idpicc))
+
+#idpicc 328 331 354 436 832 1169 1208 1271
+
+data1.10.up%>%
+  filter(idpicc %in% diff_idpicc.up)%>%
+  group_by(study)%>%
+  count()
+
+#4 in NYPUM no MMSE at all 
+#1 in PICNICS ?
+#3 in PINE ?
+
+data1.10.up%>%
+  filter(idpicc %in% diff_idpicc.up)%>%
+  group_by(study)
 
 ```
 
 ```{r linear mixed models}
 
 #---For MMSE----
+
+lme<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.fit.up)
 
 
 #---For cognitive symptom----
