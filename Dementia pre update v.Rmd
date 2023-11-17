@@ -884,12 +884,26 @@ data1.10.up%>%
   count()
 
 #4 in NYPUM no MMSE at all 
-#1 in PICNICS ?
-#3 in PINE ?
+#1 in PICNICS, no cognitive at all, the last seen is the same as baseline visit
+#3 in PINE, one patient's last seen date is the same as baseline visit. One only had hallucination and cognitive records after dementia (so cannot use the information); one didn't have cognitive at all. 
+
 
 data1.10.up%>%
   filter(idpicc %in% diff_idpicc.up)%>%
-  group_by(study)
+  filter(study=="PINE")
+
+data_long.up.3.new%>%
+  filter(idpicc==1208)
+
+data1.10.up%>%
+  filter(idpicc==1208)%>%
+  select(cognitivebl)
+
+data.baseline.fit.up<-data.baseline.fit.up%>%
+  filter(!idpicc %in% diff_idpicc.up)
+
+#874 in total
+#The baseline characteristic need to change again. 
 
 ```
 
@@ -897,13 +911,436 @@ data1.10.up%>%
 
 #---For MMSE----
 
-lme<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.fit.up)
+lme.up<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=data_long.fit.up)
 
 
 #---For cognitive symptom----
 
+lme.cog1<-mixed_model(cognitive~study+agebl+sex,random = ~ followupyears | idpicc, data=data_long.fit.up,family = binomial() )
+
+lme.cog2<-mixed_model(cognitive~study+agebl+sex+yearseducation,random = ~ followupyears | idpicc, data=data_long.fit.up,family = binomial() )
+
+lme.cog3<-mixed_model(cognitive~study+agebl+sex+yearseducation+smoking,random = ~ followupyears | idpicc, data=data_long.fit.up,family = binomial() )
+
+AIC(lme.cog1) #4276.5
+AIC(lme.cog2) #4271.8
+AIC(lme.cog3) #4270
+
+BIC(lme.cog1) #4324.2
+BIC(lme.cog2) #4324.3
+BIC(lme.cog3) #4327.3
+
+#Choose lme.cog2,
 
 
 #-----For hallucination----
+
+
+lme.hall1<-mixed_model(hallucination~study+agebl+sex,random = ~ followupyears | idpicc, data=data_long.fit.up,family = binomial() )
+
+lme.hall2<-mixed_model(hallucination~study+agebl+sex+yearseducation,random = ~ followupyears | idpicc, data=data_long.fit.up,family = binomial() )
+
+lme.hall3<-mixed_model(hallucination~study+agebl+sex+yearseducation+smoking,random = ~ followupyears | idpicc, data=data_long.fit.up,family = binomial() )
+
+AIC(lme.hall1) #1924.1
+AIC(lme.hall2) #1925.7
+AIC(lme.hall3) #1925.4
+
+BIC(lme.hall1) #1971.8
+BIC(lme.hall2) #1978.2
+BIC(lme.hall3) #1982.7
+
+#Choose lme.hall1
+
+
+```
+
+
+```{r Cox model}
+
+baseline.cox.up1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE)
+
+baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study+smoking,data=data.baseline.fit.up, x = TRUE,model = TRUE)
+
+```
+
+
+```{r joint model}
+
+#Save all the fitted mixed-effects model in a list
+
+#Adding hallucination cannot convergence 
+
+#Move hallucination out
+
+Mixed<-list(lme.up,lme.cog2) #lme.hall1
+
+jointFit.up1<-jm(baseline.cox.up1,Mixed_objects = Mixed,time_var = "followupyears")
+
+jointFit.up2<-jm(baseline.cox.up2,Mixed_objects = Mixed,time_var = "followupyears")
+
+compare_jm(jointFit.up1,jointFit.up2)
+
+summary(jointFit.up1)
+
+#jointFit.up1 DIC 20400.82   WAIC  20512.61
+#jointFit.up2 DIC 20431.28   WAIC  20532.89
+
+#choose jointFit.up1
+#Don't need smoking
+```
+
+```{r predict 1131}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.fit.up[data_long.fit.up$idpicc == 1131,]  #idpicc 1131 event year is 6
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jointFit.up1,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.up1,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"))
+
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1.2 
+
+predLong.1<-predict(jointFit.up1,newdata = predict.data.time.1,times = seq(1.2,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jointFit.up1,newdata = predict.data.time.1,process = "event",times = seq(1.2,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.1,predSurv.1,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"))
+
+
+#-----From baseline up to 2 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2.1 
+
+predLong.2<-predict(jointFit.up1,newdata = predict.data.time.2,times = seq(2.1,5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.up1,newdata = predict.data.time.2,process = "event",times = seq(2.1,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.2,predSurv.2,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"))
+
+
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3.1 
+
+#predict for longitudinal outcomes
+
+predLong.3<-predict(jointFit.up1,newdata = predict.data.time.3,times = seq(3.1,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jointFit.up1,newdata = predict.data.time.3,process = "event",times = seq(3.1,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.3,predSurv.3,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"))
+
+
+#------From baseline up to 4 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4 
+
+#predict for longitudinal outcomes
+
+predLong.4<-predict(jointFit.up1,newdata = predict.data.time.4,times = seq(4,7, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jointFit.up1,newdata = predict.data.time.4,process = "event",times = seq(4,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.4,predSurv.4,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"))
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5.04 
+
+#predict for longitudinal outcomes
+
+predLong.5<-predict(jointFit.up1,newdata = predict.data.time.5,times = seq(5.04,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.up1,newdata = predict.data.time.5,process = "event",times = seq(5.04,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.5,predSurv.5,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"))
+
+
+#----Arrange plot----
+
+png("JMpred.PINE0.png",width = 2000,height =2500,res = 400)
+
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred.PINE1.png",width = 2000,height =2500,res = 400)
+plot(predLong.1,predSurv.1,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE2.png",width = 2000,height =2500,res = 400)
+plot(predLong.2,predSurv.2,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE3.png",width = 2000,height =2500,res = 400)
+plot(predLong.3,predSurv.3,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE4.png",width = 2000,height =2500,res = 400)
+plot(predLong.4,predSurv.4,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE5.png",width = 2000,height =2500,res = 400)
+plot(predLong.5,predSurv.5,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+```
+
+```{r predict 79}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.fit.up[data_long.fit.up$idpicc == 79,]  #idpicc 14 event year is 7
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jointFit.up1,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.up1,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+png("JMpred.Cam0.png",width = 2000,height =2500,res = 400)
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+
+#-----From baseline up to 3 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-3 
+
+predLong.2<-predict(jointFit.up1,newdata = predict.data.time.2,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.up1,newdata = predict.data.time.2,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+png("JMpred.Cam2.png",width = 2000,height =2500,res = 400)
+plot(predLong.2,predSurv.2,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+#------From baseline up to 5 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4.9 
+
+#predict for longitudinal outcomes
+
+predLong.4<-predict(jointFit.up1,newdata = predict.data.time.4,times = seq(4.9,7.9, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jointFit.up1,newdata = predict.data.time.4,process = "event",times = seq(4.9,7.9, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+png("JMpred.Cam4.png",width = 2000,height =3000,res = 400)
+plot(predLong.4,predSurv.4,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+#------From baseline up to 7 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<7,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-6.8
+
+#predict for longitudinal outcomes
+
+predLong.5<-predict(jointFit.up1,newdata = predict.data.time.5,times = seq(6.8,9.8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.up1,newdata = predict.data.time.5,process = "event",times = seq(6.8,9.8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+png("JMpred.Cam5.png",width = 2000,height =3000,res = 400)
+plot(predLong.5,predSurv.5,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+
+```
+
+
+```{r NYPUM need to run}
+
+
+
+```
+
+
+```{r predict 492}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.fit.up[data_long.fit.up$idpicc == 492,]  #idpicc 1131 event year is 9
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jointFit.up1,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.up1,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+png("JMpred.PA0.png",width = 2000,height =3000,res = 400)
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1 
+
+predLong.1<-predict(jointFit.up1,newdata = predict.data.time.1,times = seq(1,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jointFit.up1,newdata = predict.data.time.1,process = "event",times = seq(1,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+png("JMpred.PA1.png",width = 2000,height =3000,res = 400)
+plot(predLong.1,predSurv.1,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+
+#-----From baseline up to 3 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-3 
+
+predLong.2<-predict(jointFit.up1,newdata = predict.data.time.2,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.up1,newdata = predict.data.time.2,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+png("JMpred.PA2.png",width = 2000,height =3000,res = 400)
+plot(predLong.2,predSurv.2,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5 
+
+#predict for longitudinal outcomes
+
+predLong.5<-predict(jointFit.up1,newdata = predict.data.time.5,times = seq(5,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.up1,newdata = predict.data.time.5,process = "event",times = seq(5,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+png("JMpred.PA5.png",width = 2000,height =3000,res = 400)
+plot(predLong.5,predSurv.5,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
 
 ```
