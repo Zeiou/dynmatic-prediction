@@ -1782,3 +1782,63 @@ calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 6,Dt=3,plot = TRUE)
 
 
 ```
+
+
+```{r IECV Parkwest}
+
+#---development dataset---
+
+IECV_devlong_3<-data_long.fit.up%>%
+  filter(study!="ParkWest")
+
+IECV_devbase_3<-data.baseline.fit.up%>%
+  filter(study!="ParkWest")
+
+IECV_devlong_3$study<-droplevels(IECV_devlong_3$study)
+IECV_devbase_3$study<-droplevels(IECV_devbase_3$study)
+
+#----validation dataset---
+
+IECV_vlong_3<-data_long.fit.up%>%
+  filter(study=="ParkWest")
+
+IECV_vlong_3$study<-droplevels(IECV_vlong_3$study)
+
+#----development model----
+
+mmse.dev3<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=IECV_devlong_3)
+
+cog.dev3<-mixed_model(cognitive~study+agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa,random = ~ followupyears | idpicc, data=IECV_devlong_3,family = binomial() )
+
+Mixed_dev3<-list(mmse.dev3,cog.dev3)
+
+Cox_dev3<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study+smoking,data=IECV_devbase_3, x = TRUE,model = TRUE)
+
+
+jm_dev3<-jm(Cox_dev3,Mixed_objects = Mixed_dev3,time_var = "followupyears") 
+
+summary(jm_dev3)
+
+#----validate in the ParkWest---
+
+#Change the study to NYPUM
+
+levels(IECV_vlong_3$study)
+
+levels(IECV_vlong_3$study)<-c("PICNICS","NYPUM","PINE","CamPalGN") #Only take PICNICS levels, other levels won't be used
+
+roc.PA.0<-tvROC(jm_dev3,newdata=IECV_vlong_3,Tstart = 0,Dt=3,cores=1L)
+roc.PA.1<-tvROC(jm_dev3,newdata=IECV_vlong_3,Tstart = 1,Dt=3,cores=1L)
+roc.PA.2<-tvROC(jm_dev3,newdata=IECV_vlong_3,Tstart = 2,Dt=3,cores=1L)
+roc.PA.3<-tvROC(jm_dev3,newdata=IECV_vlong_3,Tstart = 3,Dt=3,cores=1L)
+
+tvAUC(roc.PA.0)
+tvAUC(roc.PA.1)
+tvAUC(roc.PA.2)
+tvAUC(roc.PA.3)
+
+calibration_plot(jm_dev3,newdata = IECV_vlong_3,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev3,newdata = IECV_vlong_3,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev3,newdata = IECV_vlong_3,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev3,newdata = IECV_vlong_3,Tstart = 3,Dt=3,plot = TRUE)
+```
