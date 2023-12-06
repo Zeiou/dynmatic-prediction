@@ -860,12 +860,16 @@ data_long.up.3.new<-data_long.up.3%>%
 ```{r create baseline data}
 
 data.baseline.up<-data1.10.up%>%
-  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","yearseducation","smoking","cens","years")
+  select("study","idpicc","originalid","agebl","sex","hybl","mdsupdrspart3bltotalconvertedasa","yearseducation","smoking","hallucinationsbl",
+         "cens","years")
+
+
 
 levels(data_long.up.3.new$study)
 levels(data.baseline.up$study)
 
 setdiff(unique(data.baseline.up$idpicc),unique(data_long.up.3.new$idpicc)) #No different between this two study
+
 ```
 
 ```{r pre data for fit model}
@@ -905,9 +909,25 @@ data.baseline.fit.up<-data.baseline.fit.up%>%
 #874 in total
 #The baseline characteristic need to change again. 
 
+#----change PINE to reference level----
+
+data.baseline.fit.up$study<-factor(data.baseline.fit.up$study,levels=c("PINE","CamPalGN","NYPUM","ParkWest","PICNICS")) #put PINE as the first level
+
+levels(data.baseline.fit.up$study)
+
+data.baseline.fit.up%>%
+  group_by(study)%>%
+  summarise(sum(cens))
+
 ```
 
 ```{r linear mixed models}
+
+data_long.fit.up$study<-factor(data_long.fit.up$study,levels=c("PINE","CamPalGN","NYPUM","ParkWest","PICNICS")) #put PINE as the first level
+
+levels(data_long.fit.up$study)
+
+
 
 #---For MMSE----
 
@@ -958,9 +978,28 @@ BIC(lme.hall3) #1982.7
 
 ```{r Cox model}
 
-baseline.cox.up1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE)
+#Because Adding hallucination cannot convergence, we learnt that from JM, so put hallucination in baseline instead
 
-baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study+smoking,data=data.baseline.fit.up, x = TRUE,model = TRUE)
+#So I need to impute the missing hallucinationsbl from the mutiple imputation datatset 2 first
+
+#idpicc_nahall<-data.baseline.fit.up[is.na(data.baseline.fit.up$hallucinationsbl),]$idpicc
+
+#need to run the imputation first
+
+#impute_nahall<-data.imp2[data.imp2$idpicc%in%idpicc_nahall,]$hallucinationsindex
+
+#factor, no  no  no  no  no  no  no  no  no  no  no  yes no  no  no  no  no  no  no  no  no  no  no  no  no  no  no  no  yes
+
+#data.baseline.fit.up[data.baseline.fit.up$idpicc %in% idpicc_nahall,]$hallucinationsbl<-impute_nahall
+
+
+#----try to add hallunciation in Cox, but all JM are not convergent---
+
+#----so remove hallunciation from Cox----
+
+baseline.cox.up1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE) #without smoking
+
+baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study+smoking,data=data.baseline.fit.up, x = TRUE,model = TRUE) #with smoking
 
 ```
 
@@ -974,16 +1013,20 @@ baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3b
 #Move hallucination out
 
 Mixed1<-list(lme.up,lme.cog2) #lme.hall1
-Mixed2<-list(lme.up,lme.cog3)
+Mixed2<-list(lme.up,lme.cog3) #Chose one
 
 
-jointFit.up1<-jm(baseline.cox.up1,Mixed_objects = Mixed1,time_var = "followupyears")
+jointFit.up1<-jm(baseline.cox.up1,Mixed_objects = Mixed1,time_var = "followupyears") #JM1
 
-jointFit.up2<-jm(baseline.cox.up2,Mixed_objects = Mixed2,time_var = "followupyears")
+jointFit.up3<-jm(baseline.cox.up2,Mixed_objects = Mixed1,time_var = "followupyears") #JM2
 
-jointFit.up3<-jm(baseline.cox.up2,Mixed_objects = Mixed1,time_var = "followupyears")
+jointFit.up4<-jm(baseline.cox.up1,Mixed_objects = Mixed2,time_var = "followupyears") #JM3
 
-jointFit.up4<-jm(baseline.cox.up1,Mixed_objects = Mixed2,time_var = "followupyears")
+jointFit.up2<-jm(baseline.cox.up2,Mixed_objects = Mixed2,time_var = "followupyears") #JM4
+
+
+
+
 
 compare_jm(jointFit.up1,jointFit.up2,jointFit.up3,jointFit.up4)
 
@@ -1641,6 +1684,99 @@ plot(predLong.5,predSurv.5,outcomes=1:2,
      ylab_long=c("cognitive symptom","MMSE"),
      xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
 dev.off()
+
+
+
+
+```
+
+
+```{r IECV outline Cam}
+
+#Leave the CamPalGN study out as external validation
+
+#So the development model will be based on PINE NYPUM PICNICS ParKwest
+
+#And the validation dataset will be CamPalGN. Therefore, we need to decide which study looks most simliar to CamPalGN and use this study fixed effect to refit the CamPalGN study. From the KM curves, I think NYPUM has the most similar patter. And looking at the baseline characteristics, either NYPUM or PINE. For incidence rate is closer to NYPUM. 
+
+#Hence I chose NYPUM 
+
+```
+
+```{r IECV Cam}
+
+#---development dataset---
+
+IECV_devlong_1<-data_long.fit.up%>%
+  filter(study!="CamPalGN")
+
+IECV_devbase_1<-data.baseline.fit.up%>%
+  filter(study!="CamPalGN")
+
+IECV_devlong_1$study<-droplevels(IECV_devlong_1$study)
+IECV_devbase_1$study<-droplevels(IECV_devbase_1$study)
+
+
+#----validation dataset---
+
+IECV_vlong_1<-data_long.fit.up%>%
+  filter(study=="CamPalGN")
+
+IECV_vbase_1<-data.baseline.fit.up%>%
+  filter(study=="CamPalGN")
+
+IECV_vlong_1$study<-droplevels(IECV_vlong_1$study)
+IECV_vbase_1$study<-droplevels(IECV_vbase_1$study)
+
+
+#----development model----
+
+mmse.dev1<-lme(mmse~ study+agebl+sex+yearseducation, random = ~ followupyears | idpicc, data=IECV_devlong_1)
+
+cog.dev1<-mixed_model(cognitive~study+agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa,random = ~ followupyears | idpicc, data=IECV_devlong_1,family = binomial() )
+
+Mixed_dev1<-list(mmse.dev1,cog.dev1)
+
+Cox_dev1<-coxph(Surv(years,cens)~agebl+sex+yearseducation+mdsupdrspart3bltotalconvertedasa+hybl+study+smoking,data=IECV_devbase_1, x = TRUE,model = TRUE)
+
+
+jm_dev1<-jm(Cox_dev1,Mixed_objects = Mixed_dev1,time_var = "followupyears") 
+
+#summary(jm_dev1)
+
+#----validate in the CamPalGN---
+
+#Change the study to NYPUM
+
+levels(IECV_devlong_1$study)
+
+levels(IECV_vlong_1$study)<-c("NYPUM","PINE","ParkWest","PICNICS") #Only take NYPUM levels, other levels won't be used
+
+roc.Cam.0<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 0,Dt=3,cores=1L)
+roc.Cam.1<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 1,Dt=3,cores=1L)
+roc.Cam.2<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 2,Dt=3,cores=1L)
+roc.Cam.3<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 3,Dt=3,cores=1L)
+roc.Cam.4<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 4,Dt=3,cores=1L)
+roc.Cam.5<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 5,Dt=3,cores=1L)
+roc.Cam.6<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 6,Dt=3,cores=1L)
+
+
+tvAUC(roc.Cam.0)
+tvAUC(roc.Cam.1)
+tvAUC(roc.Cam.2)
+tvAUC(roc.Cam.3)
+tvAUC(roc.Cam.4)
+tvAUC(roc.Cam.5)
+tvAUC(roc.Cam.6)
+
+
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 4,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 5,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 6,Dt=3,plot = TRUE)
 
 
 
