@@ -57,19 +57,25 @@ datanew[datanew$originalid=="PCP46",]
 ```
 
 
-```{r pre data}
+```{r pre data 1}
 
 #---Adding cognitive symptom and hallucination in longtindinal data----
 
 data1.up<-datanew%>%
   select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
          "smoking",
-         "mdsupdrspart3bltotalconvertedasa", "yearseducation",
-         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total","datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost","losttofollowup","dead",
+         "yearseducation",
+         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total",
+         "datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost","losttofollowup","dead",
+         "mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas",
+         "mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas",
+         "mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda",
          "mdsupdrsbl101cognitive","mdsupdrsyr1101cognitive","mdsupdrsyr2101cognitive","mdsupdrsyr3101cognitive","mdsupdrsyr4101cognitive","mdsupdrsyr5101cognitive","mdsupdrsyr6101cognitive","mdsupdrsyr7101cognitive","mdsupdrsyr8101cognitive","mdsupdrsyr9101cognitive","mdsupdrsyr10101cognitive","mdsupdrsyr11101cognitive",
          "updrsblitem1intellectual","updrsyr1item1intellectual","updrsyr2item1intellectual","updrsyr3item1intellectual","updrsyr4item1intellectual","updrsyr5item1intellectual","updrsyr6item1intellectual","updrsyr7item1intellectual","updrsyr8item1intellectual","updrsyr9item1intellectual","updrsyr10item1intellectual","updrsyr11item1intellectual",
          "mdsupdrsbl102hallucinations","mdsupdrsyr1102hallucinations","mdsupdrsyr2102hallucinations","mdsupdrsyr3102hallucinations","mdsupdrsyr4102hallucinations","mdsupdrsyr5102hallucinations","mdsupdrsyr6102hallucinations","mdsupdrsyr7102hallucinations","mdsupdrsyr8102hallucinations","mdsupdrsyr9102hallucinations","mdsupdrsyr10102hallucinations","mdsupdrsyr11102hallucinations",
          "updrsblitem2thoughtdisorders","updrsyr1item2thoughtdisorders","updrsyr2item2thoughtdisorders","updrsyr3item2thoughtdisorders","updrsyr4item2thoughtdisorders","updrsyr5item2thoughtdisorders","updrsyr6item2thoughtdisorders","updrsyr7item2thoughtdisorders","updrsyr8item2thoughtdisorders","updrsyr9item2thoughtdisorders","updrsyr10item2thoughtdisorders","updrsyr11item2thoughtdisorders")
+
+
 
 data1.up$study<-factor(data1.up$study,
                     levels = c(1,2,3,4,5,6),
@@ -80,7 +86,31 @@ data1.up<-data1.up%>%
   filter(study!="ICICLE")
 
 data1.up$study<-droplevels(data1.up$study)
+```
 
+```{r update dementia data}
+
+#Already check the update in updated dementia data.rmd file
+
+#Here is to update the dementia data
+
+#Update part: 
+#1. read the data_update.csv (this is the data contains new dementia censoring date)
+#2. replace the censoring data before t to enddatedementia
+#3. used the enddatedementia as this is the new censoring date, while the defination of the censoring date don't need to change at all
+
+censordate.update<-read.csv("data_update.csv") 
+
+censordate.update<-censordate.update%>%
+  select("idpicc","originalid","dementia","enddatedementia")
+
+data1.up<-merge(data1.up,censordate.update, by= c("idpicc","originalid"),all.x = T) #x indicates the data1.up, merge by row
+
+```
+
+
+
+```{r pre data 2}
 #----change into factor---
 
 data1.up$sex<-factor(data1.up$sex,
@@ -470,38 +500,85 @@ table(data1.up$hallucinationsyr11,data1.up$study)
 ```
 
 
-```{r cens events}
+```{r not run cens events}
 
-#-----create events/censoring years------
+#-----Not run -------
+#Below is the old code which is right, but the data got update, so don't need to run anymore
+#create events/censoring years
 
-data1.up<-data1.up %>%
-  mutate(t=datedementia)%>%           
-  mutate(t=coalesce(t,datelastknownalive))%>%
-  mutate(t=coalesce(t,datelastseen))
+#data1.up<-data1.up %>%
+#  mutate(t=datedementia)%>%           
+#  mutate(t=coalesce(t,datelastknownalive))%>%
+#  mutate(t=coalesce(t,datelastseen))
 
 #if patients have the date of dementia then t is the date of dementia. If patients without date of dementia, then the censoring date will be the date of last know alive. If patients without the date of last know alive then the censoring date will be the date last seen. Because I found some patients with date of lost is much later than the last seen, but the measurement stop in the last seen visiting year.
 
-data1.up$cens<-ifelse(is.na(data1.up$datedementia),0,1)  #0=right censored, 1=event 
+#data1.up$cens<-ifelse(is.na(data1.up$datedementia),0,1)  #0=right censored, 1=event 
 
-data1.up$tt<-as.Date(as.character(data1.up$t), format="%Y-%m-%d")-
+#data1.up$tt<-as.Date(as.character(data1.up$t), format="%Y-%m-%d")-
+#                as.Date(as.character(data1.up$datevisitbl), format="%Y-%m-%d")
+
+#data1.up$tt<-as.numeric(data1.up$tt)
+
+#data1.up$years<-data1.up$tt/365.25  
+
+#Details of the reason of removing can be found in Dementia pre1.Rmd (the data only MMSE longtidinal)
+
+#data1.up<-data1.up%>%
+#  filter(data1.up$years>0) 
+
+#data1.up%>%
+#  group_by(study)%>%
+#  count()
+
+#data1.up%>%
+#  group_by(study)%>%
+# summarise(sum(cens))
+
+
+
+#-----Run this new code----
+
+data1.up$tt<-as.Date(as.character(data1.up$enddatedementia), format="%Y-%m-%d")-
                 as.Date(as.character(data1.up$datevisitbl), format="%Y-%m-%d")
 
 data1.up$tt<-as.numeric(data1.up$tt)
 
-data1.up$years<-data1.up$tt/365.25  #1222 rows
+data1.up$years<-data1.up$tt/365.25
 
-#Details of the reason of removing can be found in Dementia pre1.Rmd (the data only MMSE longtidinal)
+data1.up$cens<-data1.up$dementia #dementia is 1, censor is 0
+
+
+#-----Details of the reason of removing----
+
+data1.up%>%
+  filter(tt==0)%>%
+  group_by(study)%>%
+  count(cens)            #cens=0 (only visit in baseline) CamPalGN 1 NYPUM 8 ParkWest 3 PICNICS 29 
+                         #cens=1 (got dementia at baseline) ParkWest 1 PINE 4
+
+
+data1.up[is.na(data1.up$years),] #One patients in PICNICS, originalid==PCP66, no censoring date, so have to remove
+
 
 data1.up<-data1.up%>%
-  filter(data1.up$years>0) 
+  filter(data1.up$years>0) #955 in total (exclude ICICLE already), now 908
+
+#955-908=47
 
 data1.up%>%
   group_by(study)%>%
-  count()
+  count() #908 
+
 
 data1.up%>%
   group_by(study)%>%
-  summarise(sum(cens))
+  summarise(sum(cens))  #Still PINE should be the ref study as it had biggest event 
+
+
+```
+
+```{r up to 10 years}
 
 #----up to 10 years----
 
@@ -512,6 +589,52 @@ data1.temp10.up<-survSplit(Surv(years, cens) ~ ., data = data1.up, cut = 10,
 data1.10.up<-subset(data1.temp10.up, timegroup == 1) #only the first 10 year
 
 ```
+
+```{r KM plot}
+
+KM<-survfit(Surv(years,cens)~study,data=data1.10.up)
+
+
+ggsurv1<-ggsurvplot(KM,
+           ylab="Cumulative probability of dementia",
+           xlab="Time to dementia",
+           legend="top",
+           surv.median.line = "hv",
+           fun="event",
+           risk.table = T,
+           risk.table.y.text.col = F,
+           risk.table.y.text = T,
+           risk.table.col = "strata",
+           linetype = "strata",
+           ggtheme = theme_bw(),
+           legend.labs=c("CamPalGN","NYPUM","ParkWest","PICNICS","PINE"))
+
+ggsurv1<-ggpar(ggsurv1, 
+      font.main = c(14, "bold"),
+      font.x = c(14, "bold"),
+      font.y = c(14, "bold"),
+      font.caption = c(14, "bold"), 
+      font.legend = c(14, "bold"))
+
+print(ggsurv1, 
+      surv.plot.height = 0.6,
+      risk.table.height = 0.4)
+
+
+png("KM1.dementia.png",width = 4000,height =3000,res = 400)
+
+print(ggsurv1, 
+      surv.plot.height = 0.7,
+      risk.table.height = 0.3)
+
+dev.off()
+
+
+
+```
+
+
+
 
 
 ```{r check missing data}

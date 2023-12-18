@@ -1,0 +1,111 @@
+---
+title: "Update data dementia"
+output: html_document
+date: "2023-12-07"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r merge the data}
+
+data.update<-read_dta("Updated dementia data.dta")
+
+write.csv(data.update,"data_update.csv",row.names = F)  # need to be csv file, otherwise it fails
+data.updatenew<-read.csv("data_update.csv")  #import data again
+
+colnames(data.updatenew)<-c("idpicc","originalid","datevisitbl_new","dementia_new","datedementia_new","enddatedementia_new")
+
+data1.up.new<-merge(data1.up,data.updatenew, by= c("idpicc","originalid"),all.x = T)
+
+#exclude ICICLE
+
+data1.up.new<-data1.up.new%>%
+              filter(study!="ICICLE")
+
+
+```
+
+```{r check the difference}
+
+data.check.dementia<-data1.up.new%>%
+  select("idpicc","originalid","datevisitbl","datevisitbl_new","dementia_new","cens","datedementia_new",
+         "datedementia","enddatedementia_new","t")
+
+
+
+data.check.dementia[data.check.dementia$dementia_new!=data.check.dementia$cens,]$idpicc
+
+data.check.dementia[data.check.dementia$datedementia_new!=data.check.dementia$datedementia,]$idpicc
+
+
+data.check.dementia[data.check.dementia$enddatedementia_new!=data.check.dementia$t,]$idpicc
+
+#Only difference is in the censoring date
+
+```
+
+```{r change the censoring data to check}
+
+data1.up.new$tt<-as.Date(as.character(data1.up.new$enddatedementia_new), format="%Y-%m-%d")-
+                as.Date(as.character(data1.up.new$datevisitbl), format="%Y-%m-%d")
+
+data1.up.new$tt<-as.numeric(data1.up.new$tt)
+
+data1.up.new$years<-data1.up.new$tt/365.25  #955 rows
+
+#Details of the reason of removing can be found in Dementia pre1.Rmd (the data only MMSE longtidinal)
+
+data1.up.new<-data1.up.new%>%
+  filter(data1.up.new$years>0) #908
+
+
+#----up to 10 years----
+
+data1.temp10.up.new<-survSplit(Surv(years, dementia_new) ~ ., data = data1.up.new, cut = 10,
+                  episode="timegroup")
+
+
+data1.10.up.new<-subset(data1.temp10.up.new, timegroup == 1) #only the first 10 year
+
+```
+
+```{r KM plot check}
+
+KM.new<-survfit(Surv(years,dementia_new)~study,data=data1.10.up.new)
+
+
+ggsurv1<-ggsurvplot(KM.new,
+           ylab="Cumulative probability of dementia",
+           xlab="Time to dementia",
+           legend="top",
+           surv.median.line = "hv",
+           fun="event",
+           risk.table = T,
+           risk.table.y.text.col = F,
+           risk.table.y.text = T,
+           risk.table.col = "strata",
+           linetype = "strata",
+           ggtheme = theme_bw(),
+           legend.labs=c("CamPalGN","NYPUM","ParkWest","PICNICS","PINE"))
+
+ggsurv1<-ggpar(ggsurv1, 
+      font.main = c(14, "bold"),
+      font.x = c(14, "bold"),
+      font.y = c(14, "bold"),
+      font.caption = c(14, "bold"), 
+      font.legend = c(14, "bold"))
+
+print(ggsurv1, 
+      surv.plot.height = 0.6,
+      risk.table.height = 0.4)
+
+png("KM1.dementia.new.png",width = 4000,height =3000,res = 400)
+
+print(ggsurv1, 
+      surv.plot.height = 0.7,
+      risk.table.height = 0.3)
+
+dev.off()
+```
