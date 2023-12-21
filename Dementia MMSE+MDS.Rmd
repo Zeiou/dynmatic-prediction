@@ -1,0 +1,1087 @@
+---
+title: "MDS+MMSE model"
+output: html_document
+date: "2023-12-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r library}
+library(dplyr)
+library(tidyr)
+library(Hmisc)
+library(finalfit)
+library(jomo)
+library(mice)
+library(mitools)
+library(rms)
+library(mitml)
+library(survminer)
+library(patchwork) #Arrange plot
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+library(png)
+library(grid)
+library(haven) #read_dta
+library(nlme)
+library(JMbayes2)
+```
+
+```{r data}
+#data<-read_dta("PICC dynamic prediction v4.dta")
+
+#write.csv(data,"data.csv",row.names = F)  # need to be csv file, otherwise it fails
+datanew<-read.csv("data.csv")  #import data again
+
+#Update data: PCP66 is a male, baseline age is 74.8
+
+datanew$sex[datanew$originalid=="PCP66"]<-0  #male is 0
+datanew$agebl[datanew$originalid=="PCP66"]<-74.8
+
+#update P150 H&Y year2 is 2 not 0
+#update P757 H&Y year1 is 1.5 not 0
+
+datanew$hyyr2[datanew$originalid=="P150"]<-2
+datanew$hyyr1[datanew$originalid=="P757"]<-1.5
+
+#UPDATE P195 need to be exclude cos patient decline the follow-up and without the visit date only mmse value in medical record
+
+datanew<-datanew %>%
+  filter(originalid!="P195")
+
+datanew[datanew$originalid=="PCP46",]
+
+```
+
+
+```{r pre data 1}
+
+#---Adding cognitive symptom and hallucination in longtindinal data----
+
+data1.up<-datanew%>%
+  select("study","idpicc","originalid","incidencecase","agebl","sex","hybl",
+         "smoking",
+         "yearseducation",
+         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total",
+         "datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15","datelastseen","datelastknownalive","datedeath","datedementia","datelost","losttofollowup","dead",
+         "mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas",
+         "mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas",
+         "mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda",
+         "mdsupdrsbl101cognitive","mdsupdrsyr1101cognitive","mdsupdrsyr2101cognitive","mdsupdrsyr3101cognitive","mdsupdrsyr4101cognitive","mdsupdrsyr5101cognitive","mdsupdrsyr6101cognitive","mdsupdrsyr7101cognitive","mdsupdrsyr8101cognitive","mdsupdrsyr9101cognitive","mdsupdrsyr10101cognitive","mdsupdrsyr11101cognitive",
+         "updrsblitem1intellectual","updrsyr1item1intellectual","updrsyr2item1intellectual","updrsyr3item1intellectual","updrsyr4item1intellectual","updrsyr5item1intellectual","updrsyr6item1intellectual","updrsyr7item1intellectual","updrsyr8item1intellectual","updrsyr9item1intellectual","updrsyr10item1intellectual","updrsyr11item1intellectual",
+         "mdsupdrsbl102hallucinations","mdsupdrsyr1102hallucinations","mdsupdrsyr2102hallucinations","mdsupdrsyr3102hallucinations","mdsupdrsyr4102hallucinations","mdsupdrsyr5102hallucinations","mdsupdrsyr6102hallucinations","mdsupdrsyr7102hallucinations","mdsupdrsyr8102hallucinations","mdsupdrsyr9102hallucinations","mdsupdrsyr10102hallucinations","mdsupdrsyr11102hallucinations",
+         "updrsblitem2thoughtdisorders","updrsyr1item2thoughtdisorders","updrsyr2item2thoughtdisorders","updrsyr3item2thoughtdisorders","updrsyr4item2thoughtdisorders","updrsyr5item2thoughtdisorders","updrsyr6item2thoughtdisorders","updrsyr7item2thoughtdisorders","updrsyr8item2thoughtdisorders","updrsyr9item2thoughtdisorders","updrsyr10item2thoughtdisorders","updrsyr11item2thoughtdisorders")
+
+
+
+data1.up$study<-factor(data1.up$study,
+                    levels = c(1,2,3,4,5,6),
+                    labels= c("CamPalGN","ICICLE","NYPUM","ParkWest","PICNICS","PINE"))
+#remove ICICLE
+
+data1.up<-data1.up%>%
+  filter(study!="ICICLE")
+
+data1.up$study<-droplevels(data1.up$study)
+```
+
+```{r update dementia data}
+
+#Already check the update in updated dementia data.rmd file
+
+#Here is to update the dementia data
+
+#Update part: 
+#1. read the data_update.csv (this is the data contains new dementia censoring date)
+#2. replace the censoring data before t to enddatedementia
+#3. used the enddatedementia as this is the new censoring date, while the defination of the censoring date don't need to change at all
+
+censordate.update<-read.csv("data_update.csv") 
+
+censordate.update<-censordate.update%>%
+  select("idpicc","originalid","dementia","enddatedementia")
+
+data1.up<-merge(data1.up,censordate.update, by= c("idpicc","originalid"),all.x = T) #x indicates the data1.up, merge by row
+
+```
+
+
+
+```{r pre data 2}
+#----change into factor---
+
+data1.up$sex<-factor(data1.up$sex,
+                    levels = c(0,1),
+                    labels= c("male","female"))
+
+
+#UPDATE PCP46 and PCP66 both male
+
+data1.up[data1.up$originalid=="PCP46",]$sex<-"male"
+data1.up[data1.up$originalid=="PCP46",]$idpicc<-1692
+data1.up[data1.up$originalid=="PCP66",]$sex<-"male"
+data1.up[data1.up$originalid=="PCP66",]$idpicc<-1693
+
+
+data1.up$smoking<-ifelse(data1.up$smoking<3,
+                      1,2) #then 1 and 2 will be 1, 3 will be 2
+
+data1.up$smoking<-factor(data1.up$smoking,
+                      levels = c(1,2),
+                      labels = c("yes","no"))
+
+
+#------Create index for cognitive (yes/no)-------
+
+#Cognitive symptoms as measured by UPDRS item 1 (intellectual impairment)/MDS-UPDRS item 1 (cognitive impairment), categorized as 0-1 (no cognitive symptoms), >1 (cognitive symptoms)
+
+#Baseline
+
+data1.up$mdsupdrsbl101cognitive[data1.up$mdsupdrsbl101cognitive>1]<-1     
+data1.up$updrsblitem1intellectual[data1.up$updrsblitem1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitivebl=mdsupdrsbl101cognitive)%>%           
+      mutate(cognitivebl=coalesce(cognitivebl,updrsblitem1intellectual))  # 0=no,1=yes
+
+data1.up$cognitivebl<-factor(data1.up$cognitivebl,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+#year 1
+
+data1.up$mdsupdrsyr1101cognitive[data1.up$mdsupdrsyr1101cognitive>1]<-1     
+data1.up$updrsyr1item1intellectual[data1.up$updrsyr1item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr1=mdsupdrsyr1101cognitive)%>%           
+      mutate(cognitiveyr1=coalesce(cognitiveyr1,updrsyr1item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr1<-factor(data1.up$cognitiveyr1,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 2
+
+data1.up$mdsupdrsyr2101cognitive[data1.up$mdsupdrsyr2101cognitive>1]<-1     
+data1.up$updrsyr2item1intellectual[data1.up$updrsyr2item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr2=mdsupdrsyr2101cognitive)%>%           
+      mutate(cognitiveyr2=coalesce(cognitiveyr2,updrsyr2item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr2<-factor(data1.up$cognitiveyr2,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+
+#year 3
+
+data1.up$mdsupdrsyr3101cognitive[data1.up$mdsupdrsyr3101cognitive>1]<-1     
+data1.up$updrsyr3item1intellectual[data1.up$updrsyr3item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr3=mdsupdrsyr3101cognitive)%>%           
+      mutate(cognitiveyr3=coalesce(cognitiveyr3,updrsyr3item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr3<-factor(data1.up$cognitiveyr3,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 4
+
+data1.up$mdsupdrsyr4101cognitive[data1.up$mdsupdrsyr4101cognitive>1]<-1     
+data1.up$updrsyr4item1intellectual[data1.up$updrsyr4item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr4=mdsupdrsyr4101cognitive)%>%           
+      mutate(cognitiveyr4=coalesce(cognitiveyr4,updrsyr4item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr4<-factor(data1.up$cognitiveyr4,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+
+#year 5
+
+data1.up$mdsupdrsyr5101cognitive[data1.up$mdsupdrsyr5101cognitive>1]<-1     
+data1.up$updrsyr5item1intellectual[data1.up$updrsyr5item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr5=mdsupdrsyr5101cognitive)%>%           
+      mutate(cognitiveyr5=coalesce(cognitiveyr5,updrsyr5item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr5<-factor(data1.up$cognitiveyr5,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 6
+
+data1.up$mdsupdrsyr6101cognitive[data1.up$mdsupdrsyr6101cognitive>1]<-1     
+data1.up$updrsyr6item1intellectual[data1.up$updrsyr6item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr6=mdsupdrsyr6101cognitive)%>%           
+      mutate(cognitiveyr6=coalesce(cognitiveyr6,updrsyr6item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr6<-factor(data1.up$cognitiveyr6,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 7
+
+data1.up$mdsupdrsyr7101cognitive[data1.up$mdsupdrsyr7101cognitive>1]<-1     
+data1.up$updrsyr7item1intellectual[data1.up$updrsyr7item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr7=mdsupdrsyr7101cognitive)%>%           
+      mutate(cognitiveyr7=coalesce(cognitiveyr7,updrsyr7item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr7<-factor(data1.up$cognitiveyr7,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 8
+
+data1.up$mdsupdrsyr8101cognitive[data1.up$mdsupdrsyr8101cognitive>1]<-1     
+data1.up$updrsyr8item1intellectual[data1.up$updrsyr8item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr8=mdsupdrsyr8101cognitive)%>%           
+      mutate(cognitiveyr8=coalesce(cognitiveyr8,updrsyr8item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr8<-factor(data1.up$cognitiveyr8,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 9
+
+data1.up$mdsupdrsyr9101cognitive[data1.up$mdsupdrsyr9101cognitive>1]<-1     
+data1.up$updrsyr9item1intellectual[data1.up$updrsyr9item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr9=mdsupdrsyr9101cognitive)%>%           
+      mutate(cognitiveyr9=coalesce(cognitiveyr9,updrsyr9item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr9<-factor(data1.up$cognitiveyr9,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 10
+
+data1.up$mdsupdrsyr10101cognitive[data1.up$mdsupdrsyr10101cognitive>1]<-1     
+data1.up$updrsyr10item1intellectual[data1.up$updrsyr10item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr10=mdsupdrsyr10101cognitive)%>%           
+      mutate(cognitiveyr10=coalesce(cognitiveyr10,updrsyr10item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr10<-factor(data1.up$cognitiveyr10,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#year 11
+
+data1.up$mdsupdrsyr11101cognitive[data1.up$mdsupdrsyr11101cognitive>1]<-1     
+data1.up$updrsyr11item1intellectual[data1.up$updrsyr11item1intellectual>1]<-1
+
+data1.up<-data1.up %>%
+      mutate(cognitiveyr11=mdsupdrsyr11101cognitive)%>%           
+      mutate(cognitiveyr11=coalesce(cognitiveyr11,updrsyr11item1intellectual))  # 0=no,1=yes
+
+data1.up$cognitiveyr11<-factor(data1.up$cognitiveyr11,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+
+
+table(data1.up$cognitivebl,data1.up$study)
+table(data1.up$cognitiveyr1,data1.up$study)
+table(data1.up$cognitiveyr2,data1.up$study)
+table(data1.up$cognitiveyr3,data1.up$study)
+table(data1.up$cognitiveyr4,data1.up$study)
+table(data1.up$cognitiveyr5,data1.up$study)
+table(data1.up$cognitiveyr6,data1.up$study)
+table(data1.up$cognitiveyr7,data1.up$study)
+table(data1.up$cognitiveyr8,data1.up$study)
+table(data1.up$cognitiveyr9,data1.up$study)
+table(data1.up$cognitiveyr10,data1.up$study)
+table(data1.up$cognitiveyr11,data1.up$study)
+
+
+#------Create index for hallucinations------
+
+#Baseline
+
+data1.up$updrshallucinationsbl<-ifelse(data1.up$mdsupdrsbl102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersbl<-ifelse(data1.up$updrsblitem2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsbl=updrshallucinationsbl)%>%           
+      mutate(hallucinationsbl=coalesce(hallucinationsbl,updrsthoughtdisordersbl)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsbl<-factor(data1.up$hallucinationsbl,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 1
+
+data1.up$updrshallucinationsyr1<-ifelse(data1.up$mdsupdrsyr1102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr1<-ifelse(data1.up$updrsyr1item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr1=updrshallucinationsyr1)%>%           
+      mutate(hallucinationsyr1=coalesce(hallucinationsyr1,updrsthoughtdisordersyr1)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr1<-factor(data1.up$hallucinationsyr1,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 2
+
+data1.up$updrshallucinationsyr2<-ifelse(data1.up$mdsupdrsyr2102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr2<-ifelse(data1.up$updrsyr2item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr2=updrshallucinationsyr2)%>%           
+      mutate(hallucinationsyr2=coalesce(hallucinationsyr2,updrsthoughtdisordersyr2)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr2<-factor(data1.up$hallucinationsyr2,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+
+#Year 3
+
+data1.up$updrshallucinationsyr3<-ifelse(data1.up$mdsupdrsyr3102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr3<-ifelse(data1.up$updrsyr3item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr3=updrshallucinationsyr3)%>%           
+      mutate(hallucinationsyr3=coalesce(hallucinationsyr3,updrsthoughtdisordersyr3)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr3<-factor(data1.up$hallucinationsyr3,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+
+#Year 4
+
+data1.up$updrshallucinationsyr4<-ifelse(data1.up$mdsupdrsyr4102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr4<-ifelse(data1.up$updrsyr4item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr4=updrshallucinationsyr4)%>%           
+      mutate(hallucinationsyr4=coalesce(hallucinationsyr4,updrsthoughtdisordersyr4)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr4<-factor(data1.up$hallucinationsyr4,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 5
+
+data1.up$updrshallucinationsyr5<-ifelse(data1.up$mdsupdrsyr5102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr5<-ifelse(data1.up$updrsyr5item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr5=updrshallucinationsyr5)%>%           
+      mutate(hallucinationsyr5=coalesce(hallucinationsyr5,updrsthoughtdisordersyr5)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr5<-factor(data1.up$hallucinationsyr5,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 6
+
+data1.up$updrshallucinationsyr6<-ifelse(data1.up$mdsupdrsyr6102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr6<-ifelse(data1.up$updrsyr6item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr6=updrshallucinationsyr6)%>%           
+      mutate(hallucinationsyr6=coalesce(hallucinationsyr6,updrsthoughtdisordersyr6)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr6<-factor(data1.up$hallucinationsyr6,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 7
+
+data1.up$updrshallucinationsyr7<-ifelse(data1.up$mdsupdrsyr7102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr7<-ifelse(data1.up$updrsyr7item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr7=updrshallucinationsyr7)%>%           
+      mutate(hallucinationsyr7=coalesce(hallucinationsyr7,updrsthoughtdisordersyr7)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr7<-factor(data1.up$hallucinationsyr7,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 8
+
+data1.up$updrshallucinationsyr8<-ifelse(data1.up$mdsupdrsyr8102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr8<-ifelse(data1.up$updrsyr8item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr8=updrshallucinationsyr8)%>%           
+      mutate(hallucinationsyr8=coalesce(hallucinationsyr8,updrsthoughtdisordersyr8)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr8<-factor(data1.up$hallucinationsyr8,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 9
+
+data1.up$updrshallucinationsyr9<-ifelse(data1.up$mdsupdrsyr9102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr9<-ifelse(data1.up$updrsyr9item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr9=updrshallucinationsyr9)%>%           
+      mutate(hallucinationsyr9=coalesce(hallucinationsyr9,updrsthoughtdisordersyr9)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr9<-factor(data1.up$hallucinationsyr9,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+#Year 10
+
+data1.up$updrshallucinationsyr10<-ifelse(data1.up$mdsupdrsyr10102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr10<-ifelse(data1.up$updrsyr10item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr10=updrshallucinationsyr10)%>%           
+      mutate(hallucinationsyr10=coalesce(hallucinationsyr10,updrsthoughtdisordersyr10)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr10<-factor(data1.up$hallucinationsyr10,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+
+#Year 11
+
+data1.up$updrshallucinationsyr11<-ifelse(data1.up$mdsupdrsyr11102hallucinations>0,1,0)  # 1=yes,0=no
+
+data1.up$updrsthoughtdisordersyr11<-ifelse(data1.up$updrsyr11item2thoughtdisorders>1,1,0)  # 1=yes (2-4),0=no (0-1)
+
+data1.up<-data1.up %>%
+      mutate(hallucinationsyr11=updrshallucinationsyr11)%>%           
+      mutate(hallucinationsyr11=coalesce(hallucinationsyr11,updrsthoughtdisordersyr11)) #if updrshallucinations not find then use updrsthoughtdisorders
+
+data1.up$hallucinationsyr11<-factor(data1.up$hallucinationsyr11,
+                                  levels = c(0,1),
+                                  labels = c ("no","yes"))
+
+table(data1.up$hallucinationsbl,data1.up$study)
+table(data1.up$hallucinationsyr1,data1.up$study)
+table(data1.up$hallucinationsyr2,data1.up$study)
+table(data1.up$hallucinationsyr3,data1.up$study)
+table(data1.up$hallucinationsyr4,data1.up$study)
+table(data1.up$hallucinationsyr5,data1.up$study)
+table(data1.up$hallucinationsyr6,data1.up$study)
+table(data1.up$hallucinationsyr7,data1.up$study)
+table(data1.up$hallucinationsyr8,data1.up$study)
+table(data1.up$hallucinationsyr9,data1.up$study)
+table(data1.up$hallucinationsyr10,data1.up$study)
+table(data1.up$hallucinationsyr11,data1.up$study)
+
+```
+
+
+```{r not run cens events}
+
+#-----Not run -------
+#Below is the old code which is right, but the data got update, so don't need to run anymore
+#create events/censoring years
+
+#data1.up<-data1.up %>%
+#  mutate(t=datedementia)%>%           
+#  mutate(t=coalesce(t,datelastknownalive))%>%
+#  mutate(t=coalesce(t,datelastseen))
+
+#if patients have the date of dementia then t is the date of dementia. If patients without date of dementia, then the censoring date will be the date of last know alive. If patients without the date of last know alive then the censoring date will be the date last seen. Because I found some patients with date of lost is much later than the last seen, but the measurement stop in the last seen visiting year.
+
+#data1.up$cens<-ifelse(is.na(data1.up$datedementia),0,1)  #0=right censored, 1=event 
+
+#data1.up$tt<-as.Date(as.character(data1.up$t), format="%Y-%m-%d")-
+#                as.Date(as.character(data1.up$datevisitbl), format="%Y-%m-%d")
+
+#data1.up$tt<-as.numeric(data1.up$tt)
+
+#data1.up$years<-data1.up$tt/365.25  
+
+#Details of the reason of removing can be found in Dementia pre1.Rmd (the data only MMSE longtidinal)
+
+#data1.up<-data1.up%>%
+#  filter(data1.up$years>0) 
+
+#data1.up%>%
+#  group_by(study)%>%
+#  count()
+
+#data1.up%>%
+#  group_by(study)%>%
+# summarise(sum(cens))
+
+
+
+#-----Run this new code----
+
+data1.up$tt<-as.Date(as.character(data1.up$enddatedementia), format="%Y-%m-%d")-
+                as.Date(as.character(data1.up$datevisitbl), format="%Y-%m-%d")
+
+data1.up$tt<-as.numeric(data1.up$tt)
+
+data1.up$years<-data1.up$tt/365.25
+
+data1.up$cens<-data1.up$dementia #dementia is 1, censor is 0
+
+
+#-----Details of the reason of removing----
+
+data1.up%>%
+  filter(tt==0)%>%
+  group_by(study)%>%
+  count(cens)            #cens=0 (only visit in baseline) CamPalGN 1 NYPUM 8 ParkWest 3 PICNICS 29 
+                         #cens=1 (got dementia at baseline) ParkWest 1 PINE 4
+
+
+data1.up[is.na(data1.up$years),] #One patients in PICNICS, originalid==PCP66, no censoring date, so have to remove
+
+
+data1.up<-data1.up%>%
+  filter(data1.up$years>0) #955 in total (exclude ICICLE already), now 908
+
+#955-908=47
+
+data1.up%>%
+  group_by(study)%>%
+  count() #908 
+
+
+data1.up%>%
+  group_by(study)%>%
+  summarise(sum(cens))  #Still PINE should be the ref study as it had biggest event 
+
+
+```
+
+```{r up to 10 years}
+
+#----up to 10 years----
+
+data1.temp10.up<-survSplit(Surv(years, cens) ~ ., data = data1.up, cut = 10,
+                  episode="timegroup")
+
+
+data1.10.up<-subset(data1.temp10.up, timegroup == 1) #only the first 10 year
+
+```
+
+```{r KM plot}
+
+KM<-survfit(Surv(years,cens)~study,data=data1.10.up)
+
+
+ggsurv1<-ggsurvplot(KM,
+           ylab="Cumulative probability of dementia",
+           xlab="Time to dementia",
+           legend="top",
+           surv.median.line = "hv",
+           fun="event",
+           risk.table = T,
+           risk.table.y.text.col = F,
+           risk.table.y.text = T,
+           risk.table.col = "strata",
+           linetype = "strata",
+           ggtheme = theme_bw(),
+           legend.labs=c("CamPalGN","NYPUM","ParkWest","PICNICS","PINE"))
+
+ggsurv1<-ggpar(ggsurv1, 
+      font.main = c(14, "bold"),
+      font.x = c(14, "bold"),
+      font.y = c(14, "bold"),
+      font.caption = c(14, "bold"), 
+      font.legend = c(14, "bold"))
+
+print(ggsurv1, 
+      surv.plot.height = 0.6,
+      risk.table.height = 0.4)
+
+
+#png("KM1.dementia.png",width = 4000,height =3000,res = 400)
+
+print(ggsurv1, 
+      surv.plot.height = 0.7,
+      risk.table.height = 0.3)
+
+#dev.off()
+
+
+
+```
+
+```{r event/incidence}
+
+data1.10.up%>%
+  group_by(study)%>%
+  summarise('Incidence rate'=paste(round(sum(cens)/as.numeric(sum(years))*100,1),' per 100 person-years'))
+
+```
+
+```{r Reverse Kaplan-Meier estimate of the median follow-up time}
+
+data1.10.up$cens.followup<-1-data1.10.up$cens
+reverse.KM<-survfit(Surv(years,cens.followup)~study,data=data1.10.up)
+```
+
+```{r check missing data}
+#impute data first before it change to longitudinal data
+
+
+data.rename.up<-data1.10.up%>%  #rember to change to data1.10.remove
+  rename("Age at baseline"=agebl, 
+         "Sex"=sex,
+         "Hoehn and Yahr Scale"=hybl, "Smoking"=smoking,
+         "Years of education"=yearseducation,
+         "Hallucinations"=hallucinationsbl,
+         "Cognitive symptoms"= cognitivebl
+         ) 
+
+
+
+explanatory<-c("Smoking","Hoehn and Yahr Scale","Years of education","Hallucinations","Cognitive symptoms") 
+dependent<- c("cens","tt") #"Smoking"
+
+#png("missing.up.png",width = 3000,height =2000,res = 400)
+
+mispattern.up<-data.rename.up %>% 
+  missing_pattern(explanatory)
+
+#dev.off()
+
+#---check how many missing at least one---
+
+colnames(data1.10.up[,c(8,9,109,123)])
+
+nrow(data1.10.up[complete.cases(data1.10.up[,c(8,9,109,123)]),])  #852 in data1.10
+
+(908-852)/908 #0.06
+
+#Only 35 patient with at least one missing value
+```
+
+```{r impute missing data}
+
+#Because the censoring date change, so the Nelson-Aalen estimate also changes
+#Here we need to run the mutiple imputation again and randomly choose one imputation data set 
+
+
+data1.10.up$cons<-1
+
+data1.10.up$nelsonaalen<-nelsonaalen(data1.10.up,years,cens) #0 is right censor,1 is event
+
+Y<- data1.10.up[,c("smoking","yearseducation","hallucinationsbl","cognitivebl")]  #
+
+
+X<-data1.10.up[,c("cons","agebl","sex","hybl","nelsonaalen")] #adding Nelson-Aalen estimate  
+
+clus<-data1.10.up$study
+
+imp.dry<-jomo.MCMCchain(Y = Y,X = X,clus = clus, nburn = 2)
+
+set.seed(15678)
+imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
+
+
+#head(imp1$collectbeta) # check beta
+
+#plot trace for each parameter value
+
+#png("Jomo1.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["education(years),0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp1$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1 ,0"]),
+     xlab = "Iteration number" )
+
+plot(imp1$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+
+#plot trace for cov matrix element
+#imp1$collectomega[,,1] #check the row and col name
+#Category variable don't need to plot, just a straight line
+
+plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[education(years),1,1]^2),
+     xlab = "Iteration number" )
+
+
+
+#dev.off()
+
+
+# Capture the state of the sampler as starting values for the second set of iterations:
+beta.start <- imp1$collectbeta[,,5000] # capture the fixed parameter values
+l1cov.start <- imp1$collectomega[,,5000] # capture the level-1 covariance matrix values
+start.imp <- imp1$finimp.latnorm # capture the final imputed data set 
+
+
+
+#Re-run the same function for a larger number of iterations
+imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov.start = l1cov.start,
+                       start.imp = start.imp, nburn = 5000)
+
+# Check the trace again
+
+#png("Jomo2.png",width = 3500,height =2000,res = 400)
+
+#par(mfrow=c(2,4))
+
+plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["education(years),0"]),
+     xlab = "Iteration number" )
+
+plot(imp2$collectbeta[1, 2, 1:5000], type = "l", ylab = expression(beta["smoking.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 3, 1:5000], type = "l", ylab = expression(beta["hallucinationsindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cognitiveindex.1,0"]),
+     xlab = "Iteration number" ) 
+
+
+
+#plot(imp2$collectbeta[1, 6, 1:5000], type = "l", ylab = expression(beta["smoking.2,0"]),
+#     xlab = "Iteration number" ) 
+
+#plot trace for cov matrix element
+
+plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[education(years),1,1]^2),
+     xlab = "Iteration number" )
+
+#dev.off()
+
+#collect posterior mean of cov matrix
+l1cov.guess <- apply(imp2$collectomega, c(1, 2), mean)
+
+dim(imp2$collectomega[,,1]) #degrees of freedom is 4
+
+# Multiply by degrees of freedom to get scale matrix
+
+l1cov.prior <- l1cov.guess*4
+
+# Perform multilevel imputation:
+imp3 <- jomo(Y = Y, X = X, clus = clus, l1cov.prior = l1cov.prior, nburn = 5000, nbetween = 1000, nimp = 6,meth = "random" )  #The nimp is the precentage of missing 
+
+
+```
+
+
+```{r merge imputation data}
+
+#create id to merge the data 
+
+data1.10.up$id<-seq(nrow(data1.10.up)) 
+
+#select those varibale need to use later but no need to impute
+
+data1.10.mm<-data1.10.up%>%
+  select("id","study","idpicc","originalid",
+         "mmsebltotal","mmseyr1total","mmseyr2total","mmseyr3total","mmseyr4total","mmseyr4total","mmseyr5total","mmseyr6total","mmseyr7total","mmseyr8total","mmseyr9total","mmseyr10total","mmseyr11total","mmseyr11total","mmseyr12total",
+         "mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas",
+         "mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas",
+         "mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda",
+         "datevisitbl","datevisityr1","datevisityr2","datevisityr3","datevisityr4","datevisityr5","datevisityr6","datevisityr7","datevisityr8","datevisityr9","datevisityr10","datevisityr11","datevisityr12","datevisityr13","datevisityr14","datevisityr15",
+         "cens","tt","years")
+
+imp3.new<-merge(imp3,data1.10.mm,by.x = "id",by.y = "id")
+
+colnames(imp3.new)
+
+```
+
+
+```{r extract 6 imputed dataset}
+
+#summary(imp3.new)
+
+data.imp<-imputationList(split(imp3.new, imp3.new$Imputation)[-1])
+
+data.imp.new_names <- paste("data.imp",1:6,sep="")  # create names first
+
+imp.list<-data.imp[["imputations"]]
+
+# Loop through the indices of the list
+for (i in 1:6) {
+  # Extract the dataset based on the index
+  extracted_dataset <- imp.list[[i]]
+  
+  # Assign the extracted dataset to the corresponding variable
+  assign(paste0("data.imp", i), extracted_dataset)
+}
+
+#Now randomly choose the second imputation data set
+
+#data.imp2
+
+#imp3.new%>%
+#  filter(Imputation==2)%>%
+#  filter(study=="PINE")%>%
+#  count(cognitivebl)
+
+
+
+```
+
+
+```{r create baseline dataset}
+
+#Now randomly choose the second imputation data set
+#Use the second imputation dataset
+
+
+```
+
+
+
+```{r change long format data}
+
+#Now we have completed baseline variable in data1.10.up
+
+#-----create follow-up times in years----
+
+
+data1.10.up$year0<-0
+
+data1.10.up$year1<-as.Date(as.character(data1.10.up$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year1<-as.numeric(data1.10.up$year1)/365.25
+
+data1.10.up$year2<-as.Date(as.character(data1.10.up$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year2<-as.numeric(data1.10.up$year2)/365.25
+
+data1.10.up$year3<-as.Date(as.character(data1.10.up$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year3<-as.numeric(data1.10.up$year3)/365.25
+
+data1.10.up$year4<-as.Date(as.character(data1.10.up$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year4<-as.numeric(data1.10.up$year4)/365.25
+
+data1.10.up$year5<-as.Date(as.character(data1.10.up$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year5<-as.numeric(data1.10.up$year5)/365.25
+
+data1.10.up$year6<-as.Date(as.character(data1.10.up$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year6<-as.numeric(data1.10.up$year6)/365.25
+
+data1.10.up$year7<-as.Date(as.character(data1.10.up$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year7<-as.numeric(data1.10.up$year7)/365.25
+
+data1.10.up$year8<-as.Date(as.character(data1.10.up$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year8<-as.numeric(data1.10.up$year8)/365.25
+
+data1.10.up$year9<-as.Date(as.character(data1.10.up$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year9<-as.numeric(data1.10.up$year9)/365.25
+
+data1.10.up$year10<-as.Date(as.character(data1.10.up$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year10<-as.numeric(data1.10.up$year10)/365.25
+
+data1.10.up$year11<-as.Date(as.character(data1.10.up$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year11<-as.numeric(data1.10.up$year11)/365.25
+
+data1.10.up$year12<-as.Date(as.character(data1.10.up$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year12<-as.numeric(data1.10.up$year12)/365.25
+
+data1.10.up$year13<-as.Date(as.character(data1.10.up$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year13<-as.numeric(data1.10.up$year13)/365.25
+
+data1.10.up$year14<-as.Date(as.character(data1.10.up$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year14<-as.numeric(data1.10.up$year14)/365.25
+
+data1.10.up$year15<-as.Date(as.character(data1.10.up$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
+data1.10.up$year15<-as.numeric(data1.10.up$year15)/365.25
+
+
+#----create year follow-up----
+
+# Perform pivot_longer operation
+years_long.up <- data1.10.up %>%
+    pivot_longer(
+      cols = c(`year0`:`year15`),
+      names_to = "visityear",
+      values_to = "followupyears",
+      values_transform = ~ as.numeric(gsub(",", "", .x)),
+      values_drop_na = TRUE
+    )
+  
+years_long.up%>%
+  select(study,idpicc,visityear,followupyears)
+
+
+#----create MMSE follow-up----
+
+# Select specific columns
+
+MMSE_data.up <- data1.10.up %>%
+    select("study", "idpicc", "originalid", "mmsebltotal",
+           "mmseyr1total", "mmseyr2total", "mmseyr3total", "mmseyr4total",
+           "mmseyr5total", "mmseyr6total", "mmseyr7total", "mmseyr8total",
+           "mmseyr9total", "mmseyr10total", "mmseyr11total", "mmseyr12total")
+  
+# Rename selected columns
+
+colnames(MMSE_data.up)[4:16] <- c("year0","year1", "year2", "year3", "year4",
+                                 "year5", "year6", "year7", "year8",
+                                 "year9", "year10", "year11", "year12")
+  
+# Perform pivot_longer operation
+  mmse_long.up <- MMSE_data.up %>%
+    pivot_longer(
+      cols = `year0`:`year12`,
+      names_to = "visityear",
+      values_to = "mmse",
+      values_transform = ~ as.numeric(gsub(",", "", .x)),
+      values_drop_na = TRUE
+    )
+  
+
+#----create MDS-UPDRS part3 follow-up----
+
+# Select specific columns
+
+MDS_data.up<-data1.10.up %>%
+    select("study", "idpicc", "originalid", "mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas",
+         "mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas",
+         "mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda")
+  
+
+# Rename selected columns
+
+colnames(MDS_data.up)[4:16] <- c("year0","year1", "year2", "year3", "year4",
+                                 "year5", "year6", "year7", "year8",
+                                 "year9", "year10", "year11", "year12")
+  
+# Perform pivot_longer operation
+  mds_long.up <- MDS_data.up %>%
+    pivot_longer(
+      cols = `year0`:`year12`,
+      names_to = "visityear",
+      values_to = "MDSUPDRS3",
+      values_transform = ~ as.numeric(gsub(",", "", .x)),
+      values_drop_na = TRUE
+    )
+
+  
+```
+
+
+```{r combine long format}
+nrow(years_long.up)  #5343
+nrow(mmse_long.up)   #4643
+nrow(mds_long.up)  #5238
+
+
+years_long.up.new<-years_long.up%>%
+  select("study","idpicc","originalid",
+         "agebl","sex","hybl",
+         "smoking","yearseducation",
+         "cens","years","followupyears","visityear")
+
+
+mmse_long.up.new<-mmse_long.up%>%
+  select("study","idpicc","visityear","mmse")
+
+data_long.up.1<-merge(years_long.up.new, mmse_long.up.new, by = c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long.up.1<-data_long.up.1[order(data_long.up.1$id,data_long.up.1$visityear), ]
+
+mds_long.up.new<-mds_long.up%>%
+  select("study","idpicc","visityear","MDSUPDRS3")
+
+data_long.up.2<-merge(data_long.up.1,mds_long.up.new, by= c("study","idpicc","visityear"),all.x = T,all.y = T)
+
+data_long.up.2<-data_long.up.2[order(data_long.up.2$id,data_long.up.2$visityear), ]
+
+```
+
+
+```{r check missing data in long data}
+#----check age----
+
+data_long.up.2%>%
+  group_by(study)%>%
+  count(is.na(agebl))
+
+#idpicc 1170 1261 
+
+#data_long.up.2%>%
+#  filter(is.na(agebl))
+
+#1170 The follow-up time is end in 10 years,patient has mmse value on 11 and 12 years. 
+#1261 The follow-up time is end in 9 years, patient has mmse value on 10 and 11 years.
+
+#remove value outside the last seen date
+
+data_long.up.2<-data_long.up.2[!is.na(data_long.up.2$agebl), ]
+
+#check sex
+
+data_long.up.2%>%
+  group_by(study)%>%
+  count(is.na(sex))
+
+```
+
+```{r remove data after event}
+
+#All follow-up records after event need to be removed
+
+data_long.up.2.new<-data_long.up.2%>%
+                  filter(years>followupyears)
+
+```
+
+```{r create baseline data}
+
+data.baseline.up<-data1.10.up%>%
+  select("study","idpicc","originalid","agebl","sex","hybl","yearseducation","smoking","cognitivebl","hallucinationsbl",
+         "cens","years")
+
+
+levels(data_long.up.3.new$study)
+levels(data.baseline.up$study)
+
+setdiff(unique(data.baseline.up$idpicc),unique(data_long.up.3.new$idpicc)) #No different between this two study
+
+```
