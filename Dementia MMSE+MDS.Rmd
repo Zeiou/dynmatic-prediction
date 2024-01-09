@@ -712,7 +712,7 @@ imp1 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, nburn = 5000)
 
 #png("Jomo1.png",width = 3500,height =2000,res = 400)
 
-#par(mfrow=c(2,4))
+#par(mfrow=c(2,3))
 
 plot(imp1$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["education(years),0"]),
      xlab = "Iteration number" )
@@ -754,7 +754,7 @@ imp2 <- jomo.MCMCchain(Y = Y, X = X, clus = clus, beta.start = beta.start, l1cov
 
 #png("Jomo2.png",width = 3500,height =2000,res = 400)
 
-#par(mfrow=c(2,4))
+#par(mfrow=c(2,3))
 
 plot(imp2$collectbeta[1, 1, 1:5000], type = "l", ylab = expression(beta["education(years),0"]),
      xlab = "Iteration number" )
@@ -858,9 +858,9 @@ for (i in 1:6) {
 #Now randomly choose the second imputation data set
 #Use the second imputation dataset
 
+data.imp2
 
 ```
-
 
 
 ```{r change long format data}
@@ -869,74 +869,75 @@ for (i in 1:6) {
 
 #-----create follow-up times in years----
 
+#Use imp2 instead of data1.10.up is because the years long format data will contain the imputed data. If use the data1.10.up then the baseline imputation won't be included and there will be missing value in baseline. 
 
-data1.10.up$year0<-0
+data.imp2$year0<-0
 
-data1.10.up$year1<-as.Date(as.character(data1.10.up$datevisityr1), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year1<-as.numeric(data1.10.up$year1)/365.25
+data.imp2$year1<-as.Date(as.character(data.imp2$datevisityr1), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year1<-as.numeric(data.imp2$year1)/365.25
 
-data1.10.up$year2<-as.Date(as.character(data1.10.up$datevisityr2), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year2<-as.numeric(data1.10.up$year2)/365.25
+data.imp2$year2<-as.Date(as.character(data.imp2$datevisityr2), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year2<-as.numeric(data.imp2$year2)/365.25
 
-data1.10.up$year3<-as.Date(as.character(data1.10.up$datevisityr3), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year3<-as.numeric(data1.10.up$year3)/365.25
+data.imp2$year3<-as.Date(as.character(data.imp2$datevisityr3), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year3<-as.numeric(data.imp2$year3)/365.25
 
-data1.10.up$year4<-as.Date(as.character(data1.10.up$datevisityr4), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year4<-as.numeric(data1.10.up$year4)/365.25
+data.imp2$year4<-as.Date(as.character(data.imp2$datevisityr4), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year4<-as.numeric(data.imp2$year4)/365.25
 
-data1.10.up$year5<-as.Date(as.character(data1.10.up$datevisityr5), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year5<-as.numeric(data1.10.up$year5)/365.25
+data.imp2$year5<-as.Date(as.character(data.imp2$datevisityr5), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year5<-as.numeric(data.imp2$year5)/365.25
 
-data1.10.up$year6<-as.Date(as.character(data1.10.up$datevisityr6), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year6<-as.numeric(data1.10.up$year6)/365.25
+data.imp2$year6<-as.Date(as.character(data.imp2$datevisityr6), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year6<-as.numeric(data.imp2$year6)/365.25
 
-data1.10.up$year7<-as.Date(as.character(data1.10.up$datevisityr7), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year7<-as.numeric(data1.10.up$year7)/365.25
+data.imp2$year7<-as.Date(as.character(data.imp2$datevisityr7), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year7<-as.numeric(data.imp2$year7)/365.25
 
-data1.10.up$year8<-as.Date(as.character(data1.10.up$datevisityr8), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year8<-as.numeric(data1.10.up$year8)/365.25
+data.imp2$year8<-as.Date(as.character(data.imp2$datevisityr8), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year8<-as.numeric(data.imp2$year8)/365.25
 
-data1.10.up$year9<-as.Date(as.character(data1.10.up$datevisityr9), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year9<-as.numeric(data1.10.up$year9)/365.25
+data.imp2$year9<-as.Date(as.character(data.imp2$datevisityr9), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year9<-as.numeric(data.imp2$year9)/365.25
 
-data1.10.up$year10<-as.Date(as.character(data1.10.up$datevisityr10), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year10<-as.numeric(data1.10.up$year10)/365.25
+data.imp2$year10<-as.Date(as.character(data.imp2$datevisityr10), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year10<-as.numeric(data.imp2$year10)/365.25
 
-data1.10.up$year11<-as.Date(as.character(data1.10.up$datevisityr11), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year11<-as.numeric(data1.10.up$year11)/365.25
+data.imp2$year11<-as.Date(as.character(data.imp2$datevisityr11), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year11<-as.numeric(data.imp2$year11)/365.25
 
-data1.10.up$year12<-as.Date(as.character(data1.10.up$datevisityr12), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year12<-as.numeric(data1.10.up$year12)/365.25
+data.imp2$year12<-as.Date(as.character(data.imp2$datevisityr12), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year12<-as.numeric(data.imp2$year12)/365.25
 
-data1.10.up$year13<-as.Date(as.character(data1.10.up$datevisityr13), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year13<-as.numeric(data1.10.up$year13)/365.25
+data.imp2$year13<-as.Date(as.character(data.imp2$datevisityr13), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year13<-as.numeric(data.imp2$year13)/365.25
 
-data1.10.up$year14<-as.Date(as.character(data1.10.up$datevisityr14), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year14<-as.numeric(data1.10.up$year14)/365.25
+data.imp2$year14<-as.Date(as.character(data.imp2$datevisityr14), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year14<-as.numeric(data.imp2$year14)/365.25
 
-data1.10.up$year15<-as.Date(as.character(data1.10.up$datevisityr15), format="%Y-%m-%d")-
-                as.Date(as.character(data1.10.up$datevisitbl), format="%Y-%m-%d")
-data1.10.up$year15<-as.numeric(data1.10.up$year15)/365.25
+data.imp2$year15<-as.Date(as.character(data.imp2$datevisityr15), format="%Y-%m-%d")-
+                as.Date(as.character(data.imp2$datevisitbl), format="%Y-%m-%d")
+data.imp2$year15<-as.numeric(data.imp2$year15)/365.25
 
 
 #----create year follow-up----
 
 # Perform pivot_longer operation
-years_long.up <- data1.10.up %>%
+years_long.up <- data.imp2 %>%
     pivot_longer(
       cols = c(`year0`:`year15`),
       names_to = "visityear",
@@ -1015,9 +1016,8 @@ nrow(mds_long.up)  #5238
 years_long.up.new<-years_long.up%>%
   select("study","idpicc","originalid",
          "agebl","sex","hybl",
-         "smoking","yearseducation",
+         "smoking","yearseducation","cognitivebl","hallucinationsbl",
          "cens","years","followupyears","visityear")
-
 
 mmse_long.up.new<-mmse_long.up%>%
   select("study","idpicc","visityear","mmse")
@@ -1074,14 +1074,480 @@ data_long.up.2.new<-data_long.up.2%>%
 
 ```{r create baseline data}
 
-data.baseline.up<-data1.10.up%>%
+#Should use data.imp2 because it is imputed data. 
+
+data.baseline.up<-data.imp2%>%
   select("study","idpicc","originalid","agebl","sex","hybl","yearseducation","smoking","cognitivebl","hallucinationsbl",
          "cens","years")
 
 
-levels(data_long.up.3.new$study)
+levels(data_long.up.2.new$study)
 levels(data.baseline.up$study)
 
-setdiff(unique(data.baseline.up$idpicc),unique(data_long.up.3.new$idpicc)) #No different between this two study
+setdiff(unique(data.baseline.up$idpicc),unique(data_long.up.2.new$idpicc)) #No different between this two study
+
+```
+
+
+```{r pre data for fit model}
+
+data_long.fit.up<-data_long.up.2.new[complete.cases(data_long.up.2.new),]
+  
+data.baseline.fit.up<-data.baseline.up
+
+diff_idpicc.up<-setdiff(unique(data.baseline.fit.up$idpicc),unique(data_long.fit.up$idpicc)) #8 different 
+
+data.baseline.fit.up%>%
+  filter(idpicc %in% diff_idpicc.up)%>%
+  group_by(study)%>%
+  count()
+
+#4 in NYPUM
+#3 in PICNICS
+#1 in PINE
+
+data1.10.mm%>%
+  filter(idpicc %in% diff_idpicc.up)%>%
+  filter(study=="PINE")
+
+# 4 patients in NYPUM without any baseline and follow-up information in MMSE (3 censor, 1 event)
+# One patient (idpicc=822) in PICNICS without any follow-up information in MMSE and MDS-UPDRS (censor)
+# 2 patient in PICNICS without baseline and baseline information of MDS-UPDRS (censor)
+# One patient (idpicc=1133) in without baseline and baseline information of MMSE and without follow-up information of MDS-UPDRS (censor)
+
+
+data.baseline.fit.up<-data.baseline.fit.up%>%
+  filter(!idpicc %in% diff_idpicc.up)
+
+
+```
+
+```{r plot MMSE and MDS-UPDRS}
+
+#----MMSE----
+
+data_plot<-data_long.fit.up[order(data_long.fit.up$followupyears), ]
+
+mmse_plot<-data_long.fit.up%>%
+   select("study","idpicc","followupyears","visityear","mmse")%>%
+   filter(followupyears!=0)
+
+mmse_plot<-mmse_plot%>%
+  arrange(idpicc,followupyears)
+
+p1<-ggplot(data = subset(mmse_plot,study=="CamPalGN"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (CamPalGN)")+
+    ylab("MMSE")+
+    theme_bw()
+
+p2<-ggplot(data = subset(mmse_plot,study=="ParkWest"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (ParkWest)")+
+    ylab("MMSE")+
+    theme_bw()
+
+p3<-ggplot(data = subset(mmse_plot,study=="PICNICS"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (PICNICS)")+
+    ylab("MMSE")+
+    theme_bw()
+
+p4<-ggplot(data = subset(mmse_plot,study=="NYPUM"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (NYPUM)")+
+    ylab("MMSE")+
+    theme_bw()
+
+p5<-ggplot(data = subset(mmse_plot,study=="PINE"), aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (PINE)")+
+    ylab("MMSE")+
+    theme_bw()
+
+p6<-ggplot(data = mmse_plot, aes(x = followupyears, y = mmse,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (PICC)")+
+    ylab("MMSE")+
+    theme_bw()
+
+#png("MMSE1.png",width = 3000,height =1500,res = 400)
+
+p1+p2+p3+p4+p5+p6
+
+#grid.arrange(p1,p2,p3,p4,ncol=2) not need 
+
+#dev.off()
+
+
+
+#-----MDS-UPDRS-----
+
+mds_plot<-data_long.fit.up%>%
+   select("study","idpicc","followupyears","visityear","MDSUPDRS3")%>%
+   filter(followupyears!=0)
+
+mds_plot<-mds_plot%>%
+  arrange(idpicc,followupyears)
+
+
+p1<-ggplot(data = subset(mds_plot,study=="CamPalGN"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (CamPalGN)")+
+    ylab("MDS-UPDRS part3")+
+    theme_bw()
+
+p2<-ggplot(data = subset(mds_plot,study=="ParkWest"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (ParkWest)")+
+    ylab("MDS-UPDRS part3")+
+    theme_bw()
+
+p3<-ggplot(data = subset(mds_plot,study=="PICNICS"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (PICNICS)")+
+    ylab("MDS-UPDRS part3")+
+    theme_bw()
+
+
+p4<-ggplot(data = subset(mds_plot,study=="NYPUM"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (NYPUM)")+
+    ylab("MDS-UPDRS part3")+
+    theme_bw()
+
+p5<-ggplot(data = subset(mds_plot,study=="PINE"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (PINE)")+
+    ylab("MDS-UPDRS part3")+
+    theme_bw()
+
+p6<-ggplot(data = mds_plot, aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
+    geom_line()+
+    xlab("follow-up years (PICC)")+
+    ylab("MDS-UPDRS part3")+
+    theme_bw()
+
+png("MDSUPDRS.png",width = 3000,height =1500,res = 400)
+
+p1+p2+p3+p4+p5+p6
+
+#grid.arrange(p1,p2,p3,p4,ncol=2) not need 
+
+dev.off()
+
+```
+
+
+```{r linear mixed model}
+
+data_long.fit.up$study<-factor(data_long.fit.up$study,levels=c("PINE","CamPalGN","NYPUM","ParkWest","PICNICS")) #put PINE as the first level
+
+levels(data_long.fit.up$study)
+
+#---For MMSE----
+
+lme.mmse1<-lme(mmse~study+agebl+sex+yearseducation+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mmse2<-lme(mmse~study+agebl+sex+yearseducation+smoking+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mmse3<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mmse4<-lme(mmse~study+agebl+sex+yearseducation+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mmse5<-lme(mmse~study+agebl+sex+yearseducation+smoking+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mmse6<-lme(mmse~study+agebl+sex+yearseducation+smoking+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mmse7<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mmse8<-lme(mmse~study+agebl+sex+yearseducation+smoking+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+
+AIC(lme.mmse1) #14390.7
+AIC(lme.mmse2) #14391.0
+AIC(lme.mmse3) #14372.9 This one
+AIC(lme.mmse4) #14393.1
+AIC(lme.mmse5) #14374.9
+AIC(lme.mmse6) #14393.4
+AIC(lme.mmse7) #14375.2
+AIC(lme.mmse8) #14377.1
+
+BIC(lme.mmse1) #14484.0
+BIC(lme.mmse2) #14490.5
+BIC(lme.mmse3) #14472.4 This one
+BIC(lme.mmse4) #14492.6
+BIC(lme.mmse5) #14480.6
+BIC(lme.mmse6) #14499.1
+BIC(lme.mmse7) #14380.9
+BIC(lme.mmse8) #14489.1
+
+
+
+
+#---For MDSUPDRS----
+
+#If put rcs(,3) or rcs (,4) in follow-up years, error:nlminb problem, convergence error code = 1 message = false convergence (8)
+
+#So I only put followupyears 
+
+lme.mds1<-lme(MDSUPDRS3~study+agebl+sex+smoking+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mds2<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+#lme.mds3<-lme(MDSUPDRS3~study+agebl+sex+smoking+cognitivebl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+#error:nlminb problem, convergence error code = 1 message = false convergence (8)
+
+#lme.mds4<-lme(MDSUPDRS3~study+agebl+sex+smoking+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+#error:nlminb problem, convergence error code = 1 message = false convergence (8)
+
+lme.mds5<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+cognitivebl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mds6<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mds7<-lme(MDSUPDRS3~study+agebl+sex+smoking+cognitivebl+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+lme.mds8<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+cognitivebl+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+
+
+AIC(lme.mds1) #27740.5
+AIC(lme.mds2) #27731.2
+#AIC(lme.mds3) 
+#AIC(lme.mds4) 
+AIC(lme.mds5) #27718.2 
+AIC(lme.mds6) #27727.4
+AIC(lme.mds7) #27721.4
+AIC(lme.mds8) #27714.8 #This one
+
+BIC(lme.mds1) #27821.4
+BIC(lme.mds2) #27818.2
+#BIC(lme.mds3) 
+#BIC(lme.mds4) 
+BIC(lme.mds5) #27811.5 #This one
+BIC(lme.mds6) #27820.6
+BIC(lme.mds7) #27814.6
+BIC(lme.mds8) #27814.3
+
+
+
+
+#---Final chose one----
+lme.mmse3
+lme.mds5
+
+```
+
+```{r Cox regression}
+
+baseline.cox.up1<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE) #all significant one first from systematic review
+
+baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE) 
+ 
+baseline.cox.up3<-coxph(Surv(years,cens)~agebl+sex+hybl+hallucinationsbl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE) 
+
+AIC(baseline.cox.up1) #3169.1 This one
+AIC(baseline.cox.up2) #3173.3
+AIC(baseline.cox.up3) #3201.6
+
+
+BIC(baseline.cox.up1) #3201.5
+BIC(baseline.cox.up2) #3202.1
+BIC(baseline.cox.up3) #3230.4
+
+```
+
+```{r Cox assumption}
+
+#-----Schoenfeld residuals----
+
+cox.zph(baseline.cox.up1) #study p=0.01, need to use stratified. 
+
+baseline.cox.up.strat.1<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+strata(study),data=data.baseline.fit.up, x = TRUE,model = TRUE)
+
+```
+
+```{r joint model}
+
+Mixed1<-list(lme.mmse3,lme.mds5) 
+
+jointFit.up1<-jm(baseline.cox.up1,Mixed_objects = Mixed1,time_var = "followupyears")
+
+summary(jointFit.up1)
+
+
+```
+
+```{r predict 1131}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.fit.up[data_long.fit.up$idpicc == 1131,]  #idpicc 1131 event year is 6
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jointFit.up1,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.up1,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1.2 
+
+predLong.1<-predict(jointFit.up1,newdata = predict.data.time.1,times = seq(1.2,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jointFit.up1,newdata = predict.data.time.1,process = "event",times = seq(1.2,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.1,predSurv.1,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+#-----From baseline up to 2 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2.1 
+
+predLong.2<-predict(jointFit.up1,newdata = predict.data.time.2,times = seq(2.1,5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.up1,newdata = predict.data.time.2,process = "event",times = seq(2.1,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.2,predSurv.2,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3.1 
+
+#predict for longitudinal outcomes
+
+predLong.3<-predict(jointFit.up1,newdata = predict.data.time.3,times = seq(3.1,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jointFit.up1,newdata = predict.data.time.3,process = "event",times = seq(3.1,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.3,predSurv.3,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+#------From baseline up to 4 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4 
+
+#predict for longitudinal outcomes
+
+predLong.4<-predict(jointFit.up1,newdata = predict.data.time.4,times = seq(4,7, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jointFit.up1,newdata = predict.data.time.4,process = "event",times = seq(4,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.4,predSurv.4,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5.04 
+
+#predict for longitudinal outcomes
+
+predLong.5<-predict(jointFit.up1,newdata = predict.data.time.5,times = seq(5.04,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.up1,newdata = predict.data.time.5,process = "event",times = seq(5.04,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.5,predSurv.5,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+#----Arrange plot----
+
+png("JMpred.PINE0.png",width = 2000,height =2500,res = 400)
+
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred.PINE1.png",width = 2000,height =2500,res = 400)
+plot(predLong.1,predSurv.1,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE2.png",width = 2000,height =2500,res = 400)
+plot(predLong.2,predSurv.2,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE3.png",width = 2000,height =2500,res = 400)
+plot(predLong.3,predSurv.3,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE4.png",width = 2000,height =2500,res = 400)
+plot(predLong.4,predSurv.4,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred.PINE5.png",width = 2000,height =2500,res = 400)
+plot(predLong.5,predSurv.5,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("cognitive symptom","MMSE"),
+     xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+```
+
+
+
+```{r try stratifed Cox predict}
+
+
 
 ```
