@@ -1549,5 +1549,36 @@ dev.off()
 ```{r try stratifed Cox predict}
 
 
+jointFit.up.strat.1<-jm(baseline.cox.up.strat.1,Mixed_objects = Mixed1,time_var = "followupyears")
+
+summary(jointFit.up.strat.1) #mmse Rhat 1.0517 should still be ok
+
+```
+
+```{r predict 1131}
+
+#randomly select patient as example to illustrate
+
+predict.data<-data_long.fit.up[data_long.fit.up$idpicc == 1131,]  #idpicc 1131 event year is 6
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jointFit.up.strat.1,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+#Error: matrix multiplication: incompatible matrix dimensions: 15x11 and 55x1
+
+predSurv.0<-predict(jointFit.up.strat.1,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
 
 ```
