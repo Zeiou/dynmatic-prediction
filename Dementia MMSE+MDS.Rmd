@@ -650,6 +650,7 @@ reverse.KM<-survfit(Surv(years,cens.followup)~study,data=data1.10.up)
 ```{r check missing data}
 #impute data first before it change to longitudinal data
 
+#The baseline longtidinal outcome also need to impute, but don't need to impute the follow-up
 
 data.rename.up<-data1.10.up%>%  #rember to change to data1.10.remove
   rename("Age at baseline"=agebl, 
@@ -674,20 +675,22 @@ mispattern.up<-data.rename.up %>%
 
 #---check how many missing at least one---
 
+colnames(data1.10.up)
+
 colnames(data1.10.up[,c(8,9,109,123)])
 
 nrow(data1.10.up[complete.cases(data1.10.up[,c(8,9,109,123)]),])  #852 in data1.10
 
 (908-852)/908 #0.06
 
-#Only 35 patient with at least one missing value
+#Only 56 patient with at least one missing value
 ```
 
 ```{r impute missing data}
 
 #Because the censoring date change, so the Nelson-Aalen estimate also changes
 #Here we need to run the mutiple imputation again and randomly choose one imputation data set 
-
+#Don't impute the longtidinal outcome
 
 data1.10.up$cons<-1
 
@@ -736,6 +739,8 @@ plot(imp1$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[educat
 
 
 
+
+
 #dev.off()
 
 
@@ -777,6 +782,8 @@ plot(imp2$collectbeta[1, 4, 1:5000], type = "l", ylab = expression(beta["cogniti
 
 plot(imp2$collectomega[1, 1, 1:5000], type = "l", ylab = expression(omega[education(years),1,1]^2),
      xlab = "Iteration number" )
+
+
 
 #dev.off()
 
@@ -954,7 +961,7 @@ years_long.up%>%
 
 # Select specific columns
 
-MMSE_data.up <- data1.10.up %>%
+MMSE_data.up <- data.imp2 %>%
     select("study", "idpicc", "originalid", "mmsebltotal",
            "mmseyr1total", "mmseyr2total", "mmseyr3total", "mmseyr4total",
            "mmseyr5total", "mmseyr6total", "mmseyr7total", "mmseyr8total",
@@ -981,7 +988,7 @@ colnames(MMSE_data.up)[4:16] <- c("year0","year1", "year2", "year3", "year4",
 
 # Select specific columns
 
-MDS_data.up<-data1.10.up %>%
+MDS_data.up<-data.imp2 %>%
     select("study", "idpicc", "originalid", "mdsupdrspart3bltotalconvertedasa","mdsupdrspart3yr1totalconvertedas","mdsupdrspart3yr2totalconvertedas","mdsupdrspart3yr3totalconvertedas","mdsupdrspart3yr4totalconvertedas","mdsupdrspart3yr5totalconvertedas","mdsupdrspart3yr6totalconvertedas",
          "mdsupdrspart3yr7totalconvertedas","mdsupdrspart3yr8totalconvertedas","mdsupdrspart3yr9totalconvertedas",
          "mdsupdrspart3yr9totalconvertedas","mdsupdrspart3yr10totalconverteda","mdsupdrspart3yr11totalconverteda","mdsupdrspart3yr12totalconverteda")
@@ -1108,17 +1115,18 @@ data.baseline.fit.up%>%
 
 data1.10.mm%>%
   filter(idpicc %in% diff_idpicc.up)%>%
-  filter(study=="PINE")
+  filter(study=="PICNICS")
+
+
 
 # 4 patients in NYPUM without any baseline and follow-up information in MMSE (3 censor, 1 event)
 # One patient (idpicc=822) in PICNICS without any follow-up information in MMSE and MDS-UPDRS (censor)
-# 2 patient in PICNICS without baseline and baseline information of MDS-UPDRS (censor)
-# One patient (idpicc=1133) in without baseline and baseline information of MMSE and without follow-up information of MDS-UPDRS (censor)
+# 2 patient in PICNICS (idpicc=759,831) the only follow-up record was the same date as censoring and without baseline information of MDS-UPDRS (censor)
+# One patient (idpicc=1133) in without baseline and follow-up information of MMSE and without follow-up information of MDS-UPDRS (censor)
 
 
 data.baseline.fit.up<-data.baseline.fit.up%>%
   filter(!idpicc %in% diff_idpicc.up)
-
 
 ```
 
@@ -1228,13 +1236,13 @@ p6<-ggplot(data = mds_plot, aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
     ylab("MDS-UPDRS part3")+
     theme_bw()
 
-png("MDSUPDRS.png",width = 3000,height =1500,res = 400)
+#png("MDSUPDRS.png",width = 3000,height =1500,res = 400)
 
 p1+p2+p3+p4+p5+p6
 
 #grid.arrange(p1,p2,p3,p4,ncol=2) not need 
 
-dev.off()
+#dev.off()
 
 ```
 
@@ -1582,3 +1590,5 @@ plot(predLong.0,predSurv.0,outcomes=1:2,
 
 
 ```
+
+

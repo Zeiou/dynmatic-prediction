@@ -1,0 +1,150 @@
+---
+title: "Dementia MM baseline summary"
+output: html_document
+date: "2024-01-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r remove flow}
+
+#This data1.up need to run to count before remove those already dementia
+
+data1.up%>%
+  group_by(study)%>%
+  count()
+
+nrow(data1.10.up)
+
+#remove those without follow-up
+
+data1.10.remove<-data1.10.up%>%
+  filter(! idpicc %in% diff_idpicc.up)
+
+data1.10.remove%>%
+  group_by(study)%>%
+  count()
+```
+
+
+
+```{r Characteristic baseline}
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise(round(mean(agebl),1),round(sd(agebl),1))
+
+data1.10.remove%>%
+  summarise(round(mean(agebl),1),round(sd(agebl),1))
+
+#data1.10.remove$sex<-factor(data1.10.remove$sex,
+#                    levels = c(1,2),
+#                    labels= c("male","female"))
+
+table(data1.10.remove$sex,data1.10.remove$study)
+
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise(round(median(hybl),1),round(quantile(hybl),1))
+
+data1.10.remove%>%
+  summarise(round(median(hybl),1),round(quantile(hybl),1))
+
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise(round(median(mdsupdrspart3bltotalconvertedasa,na.rm=T),1),round(quantile(mdsupdrspart3bltotalconvertedasa,na.rm=T),1))
+
+data1.10.remove%>%
+  summarise(round(median(mdsupdrspart3bltotalconvertedasa,na.rm=T),1),round(quantile(mdsupdrspart3bltotalconvertedasa,na.rm=T),1))
+
+
+data1.10.remove%>%
+  filter(is.na(mdsupdrspart3bltotalconvertedasa))%>%
+  group_by(study)%>%
+  count()
+
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise(round(mean(yearseducation,na.rm=T),1),round(sd(yearseducation,na.rm=T),1))
+
+data1.10.remove%>%
+  summarise(round(mean(yearseducation,na.rm=T),1),round(sd(yearseducation,na.rm=T),1))
+
+data1.10.remove%>%
+  filter(is.na(yearseducation))%>%
+  group_by(study)%>%
+  count()
+
+
+table(data1.10.remove$hallucinationsindex,data1.10.remove$study)
+  
+
+data1.10.remove%>%
+  filter(is.na(hallucinationsindex))%>%
+  group_by(study)%>%
+  count()
+
+table(data1.10.remove$study,data1.10.remove$cognitiveindex)
+
+table(data1.10.remove$cognitiveindex)
+
+data1.10.remove%>%
+  filter(is.na(cognitiveindex))%>%
+  group_by(study)%>%
+  count()
+
+
+data1.10.remove%>%
+  group_by(study)%>%
+  summarise(round(median(mmsebltotal,na.rm=T),1),round(quantile(mmsebltotal,na.rm=T),1))
+
+data1.10.remove%>%
+  summarise(round(median(mmsebltotal,na.rm=T),1),round(quantile(mmsebltotal,na.rm=T),1))
+
+
+data1.10.remove%>%
+  filter(is.na(mmsebltotal))%>%
+  group_by(study)%>%
+  count()
+
+
+data1.10.remove%>%
+  filter(is.na(smoking))%>%
+  group_by(study)%>%
+  count()
+
+table(data1.10.remove$smoking,data1.10.remove$study)
+
+
+#event
+data1.10.remove%>%
+  #group_by(study)%>%
+  summarise(sum(cens)) # 0 is censoring
+
+data1.10.remove%>%
+  group_by(study)
+
+data1.10%>%
+  filter(losttofollowup==1)%>%
+  group_by(study)%>%
+  count() 
+
+
+#without the date of death
+#data1.10.remove%>%
+#  group_by(study)%>%
+#  filter(dead==1)%>%  #But know death
+#  count()
+
+data1.10.remove%>%
+  group_by(study)%>%
+  filter(cens!=1)%>%
+  filter(!is.na(datedementia))%>%
+  count()#Those patients got dementia later than 10 years, but I cut the time 10 years. 6 in PINE, 1 in NYPUM
+
+```
