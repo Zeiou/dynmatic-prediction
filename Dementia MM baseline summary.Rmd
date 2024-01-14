@@ -39,9 +39,6 @@ data1.10.remove%>%
 data1.10.remove%>%
   summarise(round(mean(agebl),1),round(sd(agebl),1))
 
-#data1.10.remove$sex<-factor(data1.10.remove$sex,
-#                    levels = c(1,2),
-#                    labels= c("male","female"))
 
 table(data1.10.remove$sex,data1.10.remove$study)
 
@@ -81,20 +78,20 @@ data1.10.remove%>%
   count()
 
 
-table(data1.10.remove$hallucinationsindex,data1.10.remove$study)
+table(data1.10.remove$hallucinationsbl,data1.10.remove$study)
   
 
 data1.10.remove%>%
-  filter(is.na(hallucinationsindex))%>%
+  filter(is.na(hallucinationsbl))%>%
   group_by(study)%>%
   count()
 
-table(data1.10.remove$study,data1.10.remove$cognitiveindex)
+table(data1.10.remove$study,data1.10.remove$cognitivebl)
 
-table(data1.10.remove$cognitiveindex)
+table(data1.10.remove$cognitivebl)
 
 data1.10.remove%>%
-  filter(is.na(cognitiveindex))%>%
+  filter(is.na(cognitivebl))%>%
   group_by(study)%>%
   count()
 
@@ -135,16 +132,8 @@ data1.10%>%
   count() 
 
 
-#without the date of death
-#data1.10.remove%>%
-#  group_by(study)%>%
-#  filter(dead==1)%>%  #But know death
-#  count()
+table(data1.10.remove$study,data1.10.remove$dementia)
 
-data1.10.remove%>%
-  group_by(study)%>%
-  filter(cens!=1)%>%
-  filter(!is.na(datedementia))%>%
-  count()#Those patients got dementia later than 10 years, but I cut the time 10 years. 6 in PINE, 1 in NYPUM
+table(data1.10.remove$study,data1.10.remove$losttofollowup)
 
 ```

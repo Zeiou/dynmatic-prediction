@@ -1299,51 +1299,49 @@ BIC(lme.mmse8) #14489.1
 
 #So I only put followupyears 
 
-lme.mds1<-lme(MDSUPDRS3~study+agebl+sex+smoking+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+data_long.fit.up$hybl
 
-lme.mds2<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+lme.mds1<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
-#lme.mds3<-lme(MDSUPDRS3~study+agebl+sex+smoking+cognitivebl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+lme.mds2<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
-#error:nlminb problem, convergence error code = 1 message = false convergence (8)
+lme.mds3<-lme(MDSUPDRS3~study+agebl+sex+hybl+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
-#lme.mds4<-lme(MDSUPDRS3~study+agebl+sex+smoking+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+lme.mds4<-lme(MDSUPDRS3~study+agebl+sex+hybl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
-#error:nlminb problem, convergence error code = 1 message = false convergence (8)
+lme.mds5<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
-lme.mds5<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+cognitivebl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+lme.mds6<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
-lme.mds6<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+lme.mds7<-lme(MDSUPDRS3~study+agebl+sex+hybl+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
-lme.mds7<-lme(MDSUPDRS3~study+agebl+sex+smoking+cognitivebl+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
-
-lme.mds8<-lme(MDSUPDRS3~study+agebl+sex+smoking+yearseducation+cognitivebl+hallucinationsbl+followupyears, random = ~ followupyears | idpicc, data=data_long.fit.up)
+lme.mds8<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up)
 
 
-AIC(lme.mds1) #27740.5
-AIC(lme.mds2) #27731.2
-#AIC(lme.mds3) 
-#AIC(lme.mds4) 
-AIC(lme.mds5) #27718.2 
-AIC(lme.mds6) #27727.4
-AIC(lme.mds7) #27721.4
-AIC(lme.mds8) #27714.8 #This one
+AIC(lme.mds1) #27357.7 #This one
+AIC(lme.mds2) #27358.2
+AIC(lme.mds3) #27357.4
+AIC(lme.mds4) #27356.7 
+AIC(lme.mds5) #27357.7
+AIC(lme.mds6) #27357.2
+AIC(lme.mds7) #27356.4
+AIC(lme.mds8) #27356.6 
 
-BIC(lme.mds1) #27821.4
-BIC(lme.mds2) #27818.2
-#BIC(lme.mds3) 
-#BIC(lme.mds4) 
-BIC(lme.mds5) #27811.5 #This one
-BIC(lme.mds6) #27820.6
-BIC(lme.mds7) #27814.6
-BIC(lme.mds8) #27814.3
+BIC(lme.mds1) #27451.0 #This one
+BIC(lme.mds2) #27457.7
+BIC(lme.mds3) #27456.9
+BIC(lme.mds4) #27456.2
+BIC(lme.mds5) #27463.4
+BIC(lme.mds6) #27462.9
+BIC(lme.mds7) #27462.1
+BIC(lme.mds8) #27468.6
 
 
 
 
 #---Final chose one----
 lme.mmse3
-lme.mds5
+lme.mds1
 
 ```
 
@@ -1374,13 +1372,32 @@ cox.zph(baseline.cox.up1) #study p=0.01, need to use stratified.
 
 baseline.cox.up.strat.1<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+strata(study),data=data.baseline.fit.up, x = TRUE,model = TRUE)
 
+#If remove PICNICS
+
+try.baseline.fit<-data.baseline.fit.up%>%
+                  filter(study!="PICNICS")
+
+
+
+try.baseline.fit$study<-droplevels(try.baseline.fit$study)
+
+
+try.cox<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=try.baseline.fit, x = TRUE,model = TRUE)
+
+cox.zph(try.cox)
+
+#So if I remove PICNICS, then the p-value will be greater than 0.05.
+
+#I think I need to remove PICNICS in the analysis as PICNICS is too different from others. 
+
 ```
 
 ```{r joint model}
 
-Mixed1<-list(lme.mmse3,lme.mds5) 
+Mixed1<-list(lme.mmse3,lme.mds1) 
 
-jointFit.up1<-jm(baseline.cox.up1,Mixed_objects = Mixed1,time_var = "followupyears")
+
+#jointFit.up1<-jm(baseline.cox.up1,Mixed_objects = Mixed1,time_var = "followupyears")
 
 summary(jointFit.up1)
 
