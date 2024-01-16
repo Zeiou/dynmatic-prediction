@@ -1,0 +1,290 @@
+---
+title: "Dementia MM IECV"
+output: html_document
+date: "2024-01-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r IECV outline PICNICS}
+
+#Leave the PICNICS study out as external validation
+
+#So the development model will be based on CamPalGN PINE NYPUM ParKwest
+
+#And the validation dataset will be PICNICS. Therefore, we need to decide which study looks most simliar to PICNICS and use this study fixed effect to refit the PICNICS study. From the KM curves, I think PINE has the most similar patter in the first 4 year. And looking at the baseline characteristics,it also is PINE. Although incidence rate is closer to Parkwest, I think that is because high censoring later. 
+
+#Hence I chose PINE 
+
+```
+
+```{r IECV PICNICS}
+
+#---development dataset---
+
+IECV_devlong_1<-data_long.fit.up%>%
+  filter(study!="PICNICS")
+
+IECV_devbase_1<-data.baseline.fit.up%>%
+  filter(study!="PICNICS")
+
+IECV_devlong_1$study<-droplevels(IECV_devlong_1$study)
+IECV_devbase_1$study<-droplevels(IECV_devbase_1$study)
+
+
+#----validation dataset---
+
+IECV_vlong_1<-data_long.fit.up%>%
+  filter(study=="PICNICS")
+
+IECV_vlong_1$study<-droplevels(IECV_vlong_1$study)
+
+#----development model----
+
+mmse.dev1<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_1)
+
+mds.dev1<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_1)
+
+Mixed_dev1<-list(mmse.dev1,mds.dev1) 
+
+Cox_dev1<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_devbase_1, x = TRUE,model = TRUE) 
+
+#jm_dev1<-jm(Cox_dev1,Mixed_objects = Mixed_dev1,time_var = "followupyears") 
+
+summary(jm_dev1)
+
+#----validate in the PICNICS---
+
+#Change the study to PINE
+
+levels(IECV_devlong_1$study)
+
+levels(IECV_vlong_1$study)<-c("PINE","CamPalGN","ParkWest","PICNICS") #Only take PINE levels, other levels won't be used
+
+roc.PIC.0<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 0,Dt=3,cores=1L)
+roc.PIC.1<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 1,Dt=3,cores=1L)
+roc.PIC.2<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 2,Dt=3,cores=1L)
+roc.PIC.3<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 3,Dt=3,cores=1L)
+roc.PIC.4<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 4,Dt=3,cores=1L)
+roc.PIC.5<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 5,Dt=3,cores=1L)
+
+
+tvAUC(roc.PIC.0)
+tvAUC(roc.PIC.1)
+tvAUC(roc.PIC.2)
+tvAUC(roc.PIC.3)
+tvAUC(roc.PIC.4)
+tvAUC(roc.PIC.5)
+
+
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 4,Dt=3,plot = TRUE)
+
+
+```
+
+
+```{r without PICNICS}
+
+#If I build model without PICNICS
+
+
+data_long.fit.up.noPIC<-data_long.fit.up%>%
+  filter(study!="PICNICS")
+
+data.baseline.fit.up.noPIC<-data.baseline.fit.up%>%
+  filter(study!="PICNICS")
+
+data_long.fit.up.noPIC$study<-droplevels(data_long.fit.up.noPIC$study)
+data.baseline.fit.up.noPIC$study<-droplevels(data.baseline.fit.up.noPIC$study)
+
+#---For MMSE----
+
+lme.mmse1<-lme(mmse~study+agebl+sex+yearseducation+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mmse2<-lme(mmse~study+agebl+sex+yearseducation+smoking+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mmse3<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mmse4<-lme(mmse~study+agebl+sex+yearseducation+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mmse5<-lme(mmse~study+agebl+sex+yearseducation+smoking+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mmse6<-lme(mmse~study+agebl+sex+yearseducation+smoking+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mmse7<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mmse8<-lme(mmse~study+agebl+sex+yearseducation+smoking+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+
+AIC(lme.mmse1) 
+AIC(lme.mmse2) 
+AIC(lme.mmse3) #This one
+AIC(lme.mmse4) 
+AIC(lme.mmse5) 
+AIC(lme.mmse6) 
+AIC(lme.mmse7) 
+AIC(lme.mmse8) 
+
+BIC(lme.mmse1) 
+BIC(lme.mmse2) 
+BIC(lme.mmse3) #This one
+BIC(lme.mmse4) 
+BIC(lme.mmse5) 
+BIC(lme.mmse6) 
+BIC(lme.mmse7) 
+BIC(lme.mmse8) 
+
+
+#---For MDSUPDRS----
+
+#If put rcs(,3) or rcs (,4) in follow-up years, error:nlminb problem, convergence error code = 1 message = false convergence (8)
+
+#So I only put followupyears 
+
+
+lme.mds1<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mds2<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mds3<-lme(MDSUPDRS3~study+agebl+sex+hybl+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mds4<-lme(MDSUPDRS3~study+agebl+sex+hybl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mds5<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mds6<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mds7<-lme(MDSUPDRS3~study+agebl+sex+hybl+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+lme.mds8<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
+
+
+AIC(lme.mds1) #This one
+AIC(lme.mds2) 
+AIC(lme.mds3) 
+AIC(lme.mds4)  
+AIC(lme.mds5)
+AIC(lme.mds6) 
+AIC(lme.mds7) 
+AIC(lme.mds8) 
+
+BIC(lme.mds1) #This one
+BIC(lme.mds2) 
+BIC(lme.mds3) 
+BIC(lme.mds4) 
+BIC(lme.mds5) 
+BIC(lme.mds6) 
+BIC(lme.mds7) 
+BIC(lme.mds8) 
+
+
+#----Baseline cox----
+
+baseline.cox.up1<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE) #all significant one first from systematic review
+
+baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE) 
+ 
+baseline.cox.up3<-coxph(Surv(years,cens)~agebl+sex+hybl+hallucinationsbl+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE) 
+
+#years of education should include or not??
+
+baseline.cox.up4<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+yearseducation+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE)
+
+#Not don't need to include it
+
+AIC(baseline.cox.up1) # This one
+AIC(baseline.cox.up2) 
+AIC(baseline.cox.up3) 
+AIC(baseline.cox.up4) 
+
+
+BIC(baseline.cox.up1) 
+BIC(baseline.cox.up2) 
+BIC(baseline.cox.up3) 
+BIC(baseline.cox.up4) 
+
+
+#-----In short----
+
+#The model still the same, chose the same linear mixed and Cox to join, just the data is different
+```
+
+
+```{r IECV NYPUM (model without PICNICS)}
+
+#----development dataset----
+
+IECV_devlong_NY<-data_long.fit.up.noPIC%>%
+  filter(study!="NYPUM")
+
+IECV_devbase_NY<-data.baseline.fit.up.noPIC%>%
+  filter(study!="NYPUM")
+
+IECV_devlong_NY$study<-droplevels(IECV_devlong_NY$study)
+IECV_devbase_NY$study<-droplevels(IECV_devbase_NY$study)
+
+
+#----validation dataset----
+
+IECV_vlong_NY<-data_long.fit.up.noPIC%>%
+  filter(study=="NYPUM")
+
+IECV_vlong_NY$study<-droplevels(IECV_vlong_NY$study)
+
+#----development model----
+
+mmse.dev.NY<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_NY)
+
+mds.dev.NY<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_NY)
+
+Mixed_dev.NY<-list(mmse.dev.NY,mds.dev.NY) 
+
+Cox_dev.NY<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_devbase_NY, x = TRUE,model = TRUE) 
+
+#jm_dev.NY<-jm(Cox_dev.NY,Mixed_objects = Mixed_dev.NY,time_var = "followupyears") 
+
+summary(jm_dev.NY)
+
+#----validate in the NYPUM----
+
+#Change the study to PINE
+
+levels(IECV_devlong_NY$study)
+
+levels(IECV_vlong_NY$study)<-c("PINE","CamPalGN","ParkWest") #Only take PINE levels, other levels won't be used
+
+roc.NY.0<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 0,Dt=3,cores=1L)
+roc.NY.1<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 1,Dt=3,cores=1L)
+roc.NY.2<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 2,Dt=3,cores=1L)
+roc.NY.3<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 3,Dt=3,cores=1L)
+roc.NY.4<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 4,Dt=3,cores=1L)
+roc.NY.5<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 5,Dt=3,cores=1L)
+roc.NY.6<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 6,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.NY.0)
+tvAUC(roc.NY.1)
+tvAUC(roc.NY.2)
+tvAUC(roc.NY.3)
+tvAUC(roc.NY.4)
+tvAUC(roc.NY.5)
+tvAUC(roc.NY.6)
+
+
+calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 4,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 5,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 6,Dt=3,plot = TRUE)
+
+
+```
