@@ -652,7 +652,7 @@ reverse.KM<-survfit(Surv(years,cens.followup)~study,data=data1.10.up)
 
 #The baseline longtidinal outcome also need to impute, but don't need to impute the follow-up
 
-data.rename.up<-data1.10.up%>%  #rember to change to data1.10.remove
+data.rename.up<-data1.10.up%>%  #rember to change to data1.10.remove later
   rename("Age at baseline"=agebl, 
          "Sex"=sex,
          "Hoehn and Yahr Scale"=hybl, "Smoking"=smoking,
@@ -680,6 +680,12 @@ colnames(data1.10.up)
 colnames(data1.10.up[,c(8,9,109,123)])
 
 nrow(data1.10.up[complete.cases(data1.10.up[,c(8,9,109,123)]),])  #852 in data1.10
+
+#colnames(data1.10.remove[,c(8,9,109,123)])
+
+#nrow(data1.10.remove[complete.cases(data1.10.remove[,c(8,9,109,123)]),]) #845
+
+#(900-845)/900 only 55 patients after remove 
 
 (908-852)/908 #0.06
 
@@ -1201,18 +1207,21 @@ mds_plot<-mds_plot%>%
 
 p1<-ggplot(data = subset(mds_plot,study=="CamPalGN"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
     geom_line()+
+    ylim(0,80)+
     xlab("follow-up years (CamPalGN)")+
     ylab("MDS-UPDRS part3")+
     theme_bw()
 
 p2<-ggplot(data = subset(mds_plot,study=="ParkWest"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
     geom_line()+
+    ylim(0,80)+
     xlab("follow-up years (ParkWest)")+
     ylab("MDS-UPDRS part3")+
     theme_bw()
 
 p3<-ggplot(data = subset(mds_plot,study=="PICNICS"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
     geom_line()+
+    ylim(0,80)+
     xlab("follow-up years (PICNICS)")+
     ylab("MDS-UPDRS part3")+
     theme_bw()
@@ -1220,18 +1229,21 @@ p3<-ggplot(data = subset(mds_plot,study=="PICNICS"), aes(x = followupyears, y = 
 
 p4<-ggplot(data = subset(mds_plot,study=="NYPUM"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
     geom_line()+
+    ylim(0,80)+
     xlab("follow-up years (NYPUM)")+
     ylab("MDS-UPDRS part3")+
     theme_bw()
 
 p5<-ggplot(data = subset(mds_plot,study=="PINE"), aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
     geom_line()+
+    ylim(0,80)+
     xlab("follow-up years (PINE)")+
     ylab("MDS-UPDRS part3")+
     theme_bw()
 
 p6<-ggplot(data = mds_plot, aes(x = followupyears, y = MDSUPDRS3,group=idpicc))+
     geom_line()+
+    ylim(0,80)+
     xlab("follow-up years (PICC)")+
     ylab("MDS-UPDRS part3")+
     theme_bw()
@@ -1349,18 +1361,28 @@ lme.mds1
 
 baseline.cox.up1<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE) #all significant one first from systematic review
 
+
+
 baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE) 
  
 baseline.cox.up3<-coxph(Surv(years,cens)~agebl+sex+hybl+hallucinationsbl+study,data=data.baseline.fit.up, x = TRUE,model = TRUE) 
 
+#years of education should include or not??
+
+baseline.cox.up4<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+yearseducation+study,data=data.baseline.fit.up, x = TRUE,model = TRUE)
+
+#Not don't need to include it
+
 AIC(baseline.cox.up1) #3169.1 This one
 AIC(baseline.cox.up2) #3173.3
 AIC(baseline.cox.up3) #3201.6
+AIC(baseline.cox.up4) #3357.4
 
 
 BIC(baseline.cox.up1) #3201.5
 BIC(baseline.cox.up2) #3202.1
 BIC(baseline.cox.up3) #3230.4
+BIC(baseline.cox.up4) #3393.9
 
 ```
 
@@ -1568,6 +1590,78 @@ plot(predLong.5,predSurv.5,outcomes=1:2,
 dev.off()
 
 ```
+
+
+```{r predict 12}
+
+#randomly select patient as example to illustrate CamPalGN
+
+predict.data<-data_long.fit.up[data_long.fit.up$idpicc == 12,]
+
+
+data_long.fit.up%>%
+  filter(study=="CamPalGN")%>%
+  filter(cens==1)
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jointFit.up1,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jointFit.up1,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.0,predSurv.0,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+
+#-----From baseline up to 3 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2.5 
+
+predLong.2<-predict(jointFit.up1,newdata = predict.data.time.2,times = seq(2.5,5.5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jointFit.up1,newdata = predict.data.time.2,process = "event",times = seq(2.5,5.5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.2,predSurv.2,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-4.6 
+
+#predict for longitudinal outcomes
+
+predLong.5<-predict(jointFit.up1,newdata = predict.data.time.5,times = seq(4.6,7.5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jointFit.up1,newdata = predict.data.time.5,process = "event",times = seq(4.6,7.5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.5,predSurv.5,outcomes=1:2,
+     ylab_event="Cumulative risk of dementia",
+     ylab_long=c("MMSE","MDS-UPDRS part3"))
+
+```
+
+
+
 
 
 
