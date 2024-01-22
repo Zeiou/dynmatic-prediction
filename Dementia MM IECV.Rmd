@@ -43,9 +43,9 @@ IECV_vlong_1$study<-droplevels(IECV_vlong_1$study)
 
 #----development model----
 
-mmse.dev1<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_1)
+mmse.dev1<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_1)
 
-mds.dev1<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_1)
+mds.dev1<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_1)
 
 Mixed_dev1<-list(mmse.dev1,mds.dev1) 
 
@@ -57,11 +57,11 @@ summary(jm_dev1)
 
 #----validate in the PICNICS---
 
-#Change the study to PINE
+#Change the study to ParkWest
 
 levels(IECV_devlong_1$study)
 
-levels(IECV_vlong_1$study)<-c("PINE","CamPalGN","ParkWest","PICNICS") #Only take PINE levels, other levels won't be used
+levels(IECV_vlong_1$study)<-c("ParkWest","CamPalGN","PICNICS","PINE") #Only take PINE levels, other levels won't be used
 
 roc.PIC.0<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 0,Dt=3,cores=1L)
 roc.PIC.1<-tvROC(jm_dev1,newdata=IECV_vlong_1,Tstart = 1,Dt=3,cores=1L)
@@ -79,142 +79,17 @@ tvAUC(roc.PIC.4)
 tvAUC(roc.PIC.5)
 
 
+#png("IECV-PIC.png",width = 3500,height =2000,res = 400)
+#par(mfrow=c(2,3))
 calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 0,Dt=3,plot = TRUE)
 calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 1,Dt=3,plot = TRUE)
 calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 2,Dt=3,plot = TRUE)
 calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 3,Dt=3,plot = TRUE)
 calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 4,Dt=3,plot = TRUE)
-
+calibration_plot(jm_dev1,newdata = IECV_vlong_1,Tstart = 5,Dt=3,plot = TRUE)
+#dev.off()
 
 ```
-
-
-```{r without PICNICS}
-
-#If I build model without PICNICS
-
-
-data_long.fit.up.noPIC<-data_long.fit.up%>%
-  filter(study!="PICNICS")
-
-data.baseline.fit.up.noPIC<-data.baseline.fit.up%>%
-  filter(study!="PICNICS")
-
-data_long.fit.up.noPIC$study<-droplevels(data_long.fit.up.noPIC$study)
-data.baseline.fit.up.noPIC$study<-droplevels(data.baseline.fit.up.noPIC$study)
-
-#---For MMSE----
-
-lme.mmse1<-lme(mmse~study+agebl+sex+yearseducation+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mmse2<-lme(mmse~study+agebl+sex+yearseducation+smoking+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mmse3<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mmse4<-lme(mmse~study+agebl+sex+yearseducation+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mmse5<-lme(mmse~study+agebl+sex+yearseducation+smoking+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mmse6<-lme(mmse~study+agebl+sex+yearseducation+smoking+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mmse7<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mmse8<-lme(mmse~study+agebl+sex+yearseducation+smoking+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-
-AIC(lme.mmse1) 
-AIC(lme.mmse2) 
-AIC(lme.mmse3) #This one
-AIC(lme.mmse4) 
-AIC(lme.mmse5) 
-AIC(lme.mmse6) 
-AIC(lme.mmse7) 
-AIC(lme.mmse8) 
-
-BIC(lme.mmse1) 
-BIC(lme.mmse2) 
-BIC(lme.mmse3) #This one
-BIC(lme.mmse4) 
-BIC(lme.mmse5) 
-BIC(lme.mmse6) 
-BIC(lme.mmse7) 
-BIC(lme.mmse8) 
-
-
-#---For MDSUPDRS----
-
-#If put rcs(,3) or rcs (,4) in follow-up years, error:nlminb problem, convergence error code = 1 message = false convergence (8)
-
-#So I only put followupyears 
-
-
-lme.mds1<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mds2<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mds3<-lme(MDSUPDRS3~study+agebl+sex+hybl+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mds4<-lme(MDSUPDRS3~study+agebl+sex+hybl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mds5<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mds6<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mds7<-lme(MDSUPDRS3~study+agebl+sex+hybl+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-lme.mds8<-lme(MDSUPDRS3~study+agebl+sex+hybl+smoking+cognitivebl+hallucinationsbl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=data_long.fit.up.noPIC)
-
-
-AIC(lme.mds1) #This one
-AIC(lme.mds2) 
-AIC(lme.mds3) 
-AIC(lme.mds4)  
-AIC(lme.mds5)
-AIC(lme.mds6) 
-AIC(lme.mds7) 
-AIC(lme.mds8) 
-
-BIC(lme.mds1) #This one
-BIC(lme.mds2) 
-BIC(lme.mds3) 
-BIC(lme.mds4) 
-BIC(lme.mds5) 
-BIC(lme.mds6) 
-BIC(lme.mds7) 
-BIC(lme.mds8) 
-
-
-#----Baseline cox----
-
-baseline.cox.up1<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE) #all significant one first from systematic review
-
-baseline.cox.up2<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE) 
- 
-baseline.cox.up3<-coxph(Surv(years,cens)~agebl+sex+hybl+hallucinationsbl+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE) 
-
-#years of education should include or not??
-
-baseline.cox.up4<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+yearseducation+study,data=data.baseline.fit.up.noPIC, x = TRUE,model = TRUE)
-
-#Not don't need to include it
-
-AIC(baseline.cox.up1) # This one
-AIC(baseline.cox.up2) 
-AIC(baseline.cox.up3) 
-AIC(baseline.cox.up4) 
-
-
-BIC(baseline.cox.up1) 
-BIC(baseline.cox.up2) 
-BIC(baseline.cox.up3) 
-BIC(baseline.cox.up4) 
-
-
-#-----In short----
-
-#The model still the same, chose the same linear mixed and Cox to join, just the data is different
-```
-
 
 ```{r IECV NYPUM (model without PICNICS)}
 
@@ -229,6 +104,8 @@ IECV_devbase_NY<-data.baseline.fit.up.noPIC%>%
 IECV_devlong_NY$study<-droplevels(IECV_devlong_NY$study)
 IECV_devbase_NY$study<-droplevels(IECV_devbase_NY$study)
 
+IECV_devbase_NY$study<-factor(IECV_devbase_NY$study,levels=c("PINE","CamPalGN","ParkWest")) #put PINE as the first level
+IECV_devlong_NY$study<-factor(IECV_devlong_NY$study,levels=c("PINE","CamPalGN","ParkWest")) 
 
 #----validation dataset----
 
@@ -239,13 +116,13 @@ IECV_vlong_NY$study<-droplevels(IECV_vlong_NY$study)
 
 #----development model----
 
-mmse.dev.NY<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_NY)
+mmse.dev.NY<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_NY)
 
-mds.dev.NY<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,4), random = ~ followupyears | idpicc, data=IECV_devlong_NY)
+mds.dev.NY<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_NY)
 
 Mixed_dev.NY<-list(mmse.dev.NY,mds.dev.NY) 
 
-Cox_dev.NY<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_devbase_NY, x = TRUE,model = TRUE) 
+Cox_dev.NY<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_devbase_NY, x = TRUE,model = TRUE)  
 
 #jm_dev.NY<-jm(Cox_dev.NY,Mixed_objects = Mixed_dev.NY,time_var = "followupyears") 
 
@@ -253,11 +130,11 @@ summary(jm_dev.NY)
 
 #----validate in the NYPUM----
 
-#Change the study to PINE
+#Change the study to CamPalGN 
 
 levels(IECV_devlong_NY$study)
 
-levels(IECV_vlong_NY$study)<-c("PINE","CamPalGN","ParkWest") #Only take PINE levels, other levels won't be used
+levels(IECV_vlong_NY$study)<-c("CamPalGN","PINE","ParkWest") #Only take CamPalGN levels, other levels won't be used
 
 roc.NY.0<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 0,Dt=3,cores=1L)
 roc.NY.1<-tvROC(jm_dev.NY,newdata=IECV_vlong_NY,Tstart = 1,Dt=3,cores=1L)
@@ -278,6 +155,8 @@ tvAUC(roc.NY.5)
 tvAUC(roc.NY.6)
 
 
+#png("IECV-NYPUM.png",width = 4200,height =2000,res = 400)
+#par(mfrow=c(2,4))
 calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 0,Dt=3,plot = TRUE)
 calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 1,Dt=3,plot = TRUE)
 calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 2,Dt=3,plot = TRUE)
@@ -285,6 +164,426 @@ calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 3,Dt=3,plot = TRUE)
 calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 4,Dt=3,plot = TRUE)
 calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 5,Dt=3,plot = TRUE)
 calibration_plot(jm_dev.NY,newdata = IECV_vlong_NY,Tstart = 6,Dt=3,plot = TRUE)
+#dev.off()
 
+```
+
+
+```{r IECV CamPalGN (model without PICNICS)}
+
+#----development dataset----
+
+IECV_devlong_Cam<-data_long.fit.up.noPIC%>%
+  filter(study!="CamPalGN")
+
+IECV_devbase_Cam<-data.baseline.fit.up.noPIC%>%
+  filter(study!="CamPalGN")
+
+IECV_devlong_Cam$study<-droplevels(IECV_devlong_Cam$study)
+IECV_devbase_Cam$study<-droplevels(IECV_devbase_Cam$study)
+
+IECV_devbase_Cam$study<-factor(IECV_devbase_Cam$study,levels=c("PINE","NYPUM","ParkWest")) #put PINE as the first level
+IECV_devlong_Cam$study<-factor(IECV_devlong_Cam$study,levels=c("PINE","NYPUM","ParkWest")) 
+
+#----validation dataset----
+
+IECV_vlong_Cam<-data_long.fit.up.noPIC%>%
+  filter(study=="CamPalGN")
+
+IECV_vlong_Cam$study<-droplevels(IECV_vlong_Cam$study)
+
+
+#----development model----
+
+mmse.dev.Cam<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_Cam)
+
+mds.dev.Cam<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_Cam)
+
+Mixed_dev.Cam<-list(mmse.dev.Cam,mds.dev.Cam) 
+
+Cox_dev.Cam<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_devbase_Cam, x = TRUE,model = TRUE)  
+
+#jm_dev.Cam<-jm(Cox_dev.Cam,Mixed_objects = Mixed_dev.Cam,time_var = "followupyears") 
+
+summary(jm_dev.Cam)
+
+#----validate in the CamPalGN----
+
+#Change the study to NYPUM 
+
+levels(IECV_devlong_Cam$study)
+
+levels(IECV_vlong_Cam$study)<-c("NYPUM","PINE","ParkWest") #Only take NYPUM levels, other levels won't be used
+
+roc.Cam.0<-tvROC(jm_dev.Cam,newdata=IECV_vlong_Cam,Tstart = 0,Dt=3,cores=1L)
+roc.Cam.1<-tvROC(jm_dev.Cam,newdata=IECV_vlong_Cam,Tstart = 1,Dt=3,cores=1L)
+roc.Cam.2<-tvROC(jm_dev.Cam,newdata=IECV_vlong_Cam,Tstart = 2,Dt=3,cores=1L)
+roc.Cam.3<-tvROC(jm_dev.Cam,newdata=IECV_vlong_Cam,Tstart = 3,Dt=3,cores=1L)
+roc.Cam.4<-tvROC(jm_dev.Cam,newdata=IECV_vlong_Cam,Tstart = 4,Dt=3,cores=1L)
+roc.Cam.5<-tvROC(jm_dev.Cam,newdata=IECV_vlong_Cam,Tstart = 5,Dt=3,cores=1L)
+roc.Cam.6<-tvROC(jm_dev.Cam,newdata=IECV_vlong_Cam,Tstart = 6,Dt=3,cores=1L)
+
+
+tvAUC(roc.Cam.0)
+tvAUC(roc.Cam.1)
+tvAUC(roc.Cam.2)
+tvAUC(roc.Cam.3)
+tvAUC(roc.Cam.4)
+tvAUC(roc.Cam.5)
+tvAUC(roc.Cam.6)
+
+
+
+#png("IECV-Cam.png",width = 4200,height =2000,res = 400)
+#par(mfrow=c(2,4))
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 4,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 5,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 6,Dt=3,plot = TRUE)
+#dev.off()
+
+
+```
+
+
+```{r IECV ParkWest (model without PICNICS)}
+
+#----development dataset----
+
+IECV_devlong_PA<-data_long.fit.up.noPIC%>%
+  filter(study!="ParkWest")
+
+IECV_devbase_PA<-data.baseline.fit.up.noPIC%>%
+  filter(study!="ParkWest")
+
+IECV_devlong_PA$study<-droplevels(IECV_devlong_PA$study)
+IECV_devbase_PA$study<-droplevels(IECV_devbase_PA$study)
+
+IECV_devbase_PA$study<-factor(IECV_devbase_PA$study,levels=c("PINE","CamPalGN","NYPUM")) #put PINE as the first level
+IECV_devlong_PA$study<-factor(IECV_devlong_PA$study,levels=c("PINE","CamPalGN","NYPUM")) 
+
+#----validation dataset----
+
+IECV_vlong_PA<-data_long.fit.up.noPIC%>%
+  filter(study=="ParkWest")
+
+IECV_vlong_PA$study<-droplevels(IECV_vlong_PA$study)
+
+
+#----development model----
+
+mmse.dev.PA<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_PA)
+
+mds.dev.PA<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_PA)
+
+Mixed_dev.PA<-list(mmse.dev.PA,mds.dev.PA) 
+
+Cox_dev.PA<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_devbase_PA, x = TRUE,model = TRUE)  
+
+#jm_dev.PA<-jm(Cox_dev.PA,Mixed_objects = Mixed_dev.PA,time_var = "followupyears") 
+
+summary(jm_dev.PA)
+
+#----validate in the ParkWest----
+
+#Change the study to PINE 
+
+levels(IECV_devlong_PA$study)
+
+levels(IECV_vlong_PA$study)<-c("PINE","NYPUM","CamPalGN") #Only take PINE levels, other levels won't be used
+
+roc.PA.0<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,cores=1L)
+roc.PA.1<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 1,Dt=3,cores=1L)
+roc.PA.2<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,cores=1L)
+roc.PA.3<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,cores=1L)
+roc.PA.4<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)
+
+
+roc.PA.0<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 0,Dt=7,cores=1L)
+roc.PA.1<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 1,Dt=6,cores=1L)
+roc.PA.2<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 2,Dt=5,cores=1L)
+roc.PA.3<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 3,Dt=4,cores=1L)
+roc.PA.4<-tvROC(jm_dev.PA,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)
+
+
+tvAUC(roc.PA.0)
+tvAUC(roc.PA.1)
+tvAUC(roc.PA.2)
+tvAUC(roc.PA.3)
+tvAUC(roc.PA.4)
+
+
+png("IECV-PA.png",width = 3000,height =2000,res = 400)
+par(mfrow=c(2,3))
+calibration_plot(jm_dev.PA,newdata = IECV_vlong_PA,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PA,newdata = IECV_vlong_PA,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PA,newdata = IECV_vlong_PA,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PA,newdata = IECV_vlong_PA,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PA,newdata = IECV_vlong_PA,Tstart = 4,Dt=3,plot = TRUE)
+dev.off()
+
+```
+
+
+```{r IECV PINE (model without PICNICS)}
+
+#----development dataset----
+
+IECV_devlong_PIN<-data_long.fit.up.noPIC%>%
+  filter(study!="PINE")
+
+IECV_devbase_PIN<-data.baseline.fit.up.noPIC%>%
+  filter(study!="PINE")
+
+IECV_devlong_PIN$study<-droplevels(IECV_devlong_PIN$study)
+IECV_devbase_PIN$study<-droplevels(IECV_devbase_PIN$study)
+
+IECV_devbase_PIN$study<-factor(IECV_devbase_PIN$study,levels=c("NYPUM","CamPalGN","ParkWest")) #put NYPUM as the first level
+IECV_devlong_PIN$study<-factor(IECV_devlong_PIN$study,levels=c("NYPUM","CamPalGN","ParkWest")) 
+
+#----validation dataset----
+
+IECV_vlong_PIN<-data_long.fit.up.noPIC%>%
+  filter(study=="PINE")
+
+IECV_vlong_PIN$study<-droplevels(IECV_vlong_PIN$study)
+
+#----development model----
+
+mmse.dev.PIN<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_PIN)
+
+mds.dev.PIN<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_devlong_PIN)
+
+Mixed_dev.PIN<-list(mmse.dev.PIN,mds.dev.PIN) 
+
+Cox_dev.PIN<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_devbase_PIN, x = TRUE,model = TRUE)  
+
+#jm_dev.PIN<-jm(Cox_dev.PIN,Mixed_objects = Mixed_dev.PIN,time_var = "followupyears") 
+
+summary(jm_dev.PIN)
+
+#----validate in the PINE----
+
+#Change the study to PINE 
+
+levels(IECV_devlong_PIN$study)
+
+levels(IECV_vlong_PIN$study)<-c("NYPUM","CamPalGN","ParkWest") #Only take NYPUM levels, other levels won't be used
+
+roc.PIN.0<-tvROC(jm_dev.PIN,newdata=IECV_vlong_PIN,Tstart = 0,Dt=3,cores=1L)
+roc.PIN.1<-tvROC(jm_dev.PIN,newdata=IECV_vlong_PIN,Tstart = 1,Dt=3,cores=1L)
+roc.PIN.2<-tvROC(jm_dev.PIN,newdata=IECV_vlong_PIN,Tstart = 2,Dt=3,cores=1L)
+roc.PIN.3<-tvROC(jm_dev.PIN,newdata=IECV_vlong_PIN,Tstart = 3,Dt=3,cores=1L)
+roc.PIN.4<-tvROC(jm_dev.PIN,newdata=IECV_vlong_PIN,Tstart = 4,Dt=3,cores=1L)
+roc.PIN.5<-tvROC(jm_dev.PIN,newdata=IECV_vlong_PIN,Tstart = 5,Dt=3,cores=1L)
+roc.PIN.6<-tvROC(jm_dev.PIN,newdata=IECV_vlong_PIN,Tstart = 6,Dt=3,cores=1L)
+
+
+tvAUC(roc.PIN.0)
+tvAUC(roc.PIN.1)
+tvAUC(roc.PIN.2)
+tvAUC(roc.PIN.3)
+tvAUC(roc.PIN.4)
+tvAUC(roc.PIN.5)
+tvAUC(roc.PIN.6)
+
+
+png("IECV-PIN.png",width = 4200,height =2000,res = 400)
+par(mfrow=c(2,4))
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 4,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 5,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 6,Dt=3,plot = TRUE)
+dev.off()
+
+
+#png("IECV-PIN2.png",width = 4200,height =2000,res = 400)
+#par(mfrow=c(2,4))
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 0,Dt=9,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 1,Dt=8,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 2,Dt=7,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 3,Dt=6,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 4,Dt=5,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 5,Dt=4,plot = TRUE)
+calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 6,Dt=3,plot = TRUE)
+#dev.off()
+
+```
+
+
+```{r extre validation only NYPUM and the model only develop with PINE study}
+
+#----PINE dataset-----
+
+IECV_vlong_PIN<-data_long.fit.up.noPIC%>%
+  filter(study=="PINE")
+
+IECV_vlong_PIN$study<-droplevels(IECV_vlong_PIN$study)
+
+IECV_vbase_PIN<-data.baseline.fit.up.noPIC%>%
+  filter(study=="PINE")
+
+IECV_vbase_PIN$study<-droplevels(IECV_vbase_PIN$study)
+
+
+mmse.PINE<-lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PIN)
+
+mds.PINE<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PIN)
+
+Mixed_PINE<-list(mmse.PINE,mds.PINE) 
+
+Cox_PINE<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_PIN, x = TRUE,model = TRUE)  
+
+#jm_PINE<-jm(Cox_PINE,Mixed_objects = Mixed_PINE,time_var = "followupyears") 
+
+summary(jm_PINE)
+
+
+#----Validate in NYPUM study----
+
+IECV_vlong_NY<-data_long.fit.up.noPIC%>%
+  filter(study=="NYPUM")
+
+IECV_vlong_NY$study<-droplevels(IECV_vlong_NY$study)
+
+
+roc.ny.0<-tvROC(jm_PINE,newdata=IECV_vlong_NY,Tstart = 0,Dt=3,cores=1L)
+roc.ny.1<-tvROC(jm_PINE,newdata=IECV_vlong_NY,Tstart = 1,Dt=3,cores=1L)
+roc.ny.2<-tvROC(jm_PINE,newdata=IECV_vlong_NY,Tstart = 2,Dt=3,cores=1L)
+roc.ny.3<-tvROC(jm_PINE,newdata=IECV_vlong_NY,Tstart = 3,Dt=3,cores=1L)
+roc.ny.4<-tvROC(jm_PINE,newdata=IECV_vlong_NY,Tstart = 4,Dt=3,cores=1L)
+roc.ny.5<-tvROC(jm_PINE,newdata=IECV_vlong_NY,Tstart = 5,Dt=3,cores=1L)
+roc.ny.6<-tvROC(jm_PINE,newdata=IECV_vlong_NY,Tstart = 6,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.ny.0)
+tvAUC(roc.ny.1)
+tvAUC(roc.ny.2)
+tvAUC(roc.ny.3)
+tvAUC(roc.ny.4)
+tvAUC(roc.ny.5)
+tvAUC(roc.ny.6)
+
+
+png("EV-ny.png",width = 4200,height =2000,res = 400)
+par(mfrow=c(2,4))
+calibration_plot(jm_PINE,newdata = IECV_vlong_NY,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_PINE,newdata = IECV_vlong_NY,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_PINE,newdata = IECV_vlong_NY,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_PINE,newdata = IECV_vlong_NY,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_PINE,newdata = IECV_vlong_NY,Tstart = 4,Dt=3,plot = TRUE)
+calibration_plot(jm_PINE,newdata = IECV_vlong_NY,Tstart = 5,Dt=3,plot = TRUE)
+calibration_plot(jm_PINE,newdata = IECV_vlong_NY,Tstart = 6,Dt=3,plot = TRUE)
+dev.off()
+
+```
+
+```{r develop model from other three studies}
+
+IECV_vbase_CPP<-data.baseline.fit.up%>%
+  filter(study %in% c("CamPalGN","PICNICS","ParkWest"))
+
+IECV_vbase_CPP$study<-droplevels(IECV_vbase_CPP$study)
+
+IECV_vlong_CPP<-data_long.fit.up%>%
+  filter(study %in% c("CamPalGN","PICNICS","ParkWest"))
+
+IECV_vlong_CPP$study<-droplevels(IECV_vlong_CPP$study)
+
+Cox_CPP<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_vbase_CPP, x = TRUE,model = TRUE)
+
+cox.zph(Cox_CPP) #didn't pass study 0.02, hallucination 0.03, but it may because the sample size is small.
+
+
+mmse.CPP<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP)
+
+mds.CPP<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP)
+
+Mixed_CPP<-list(mmse.CPP,mds.CPP) 
+
+Cox_CPP<-coxph(Surv(years,cens)~study+agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_CPP, x = TRUE,model = TRUE)
+
+#jm_dev.CPP<-jm(Cox_CPP,Mixed_objects = Mixed_CPP,time_var = "followupyears") 
+
+summary(jm_dev.CPP)
+
+```
+
+
+```{r IECV model from PCC and validation in CamPalGN}
+
+#So the model developement from PICNICS and ParkWest and validate in CamPalGN is bad
+
+#Now I tried to develop the model from ParkWest and validate in CamPalGN to see how it goes
+
+IECV_vbase_PP<-data.baseline.fit.up%>%
+  filter(study %in% c("ParkWest"))
+
+IECV_vbase_PP$study<-droplevels(IECV_vbase_PP$study)
+
+IECV_vlong_PP<-data_long.fit.up%>%
+  filter(study %in% c("ParkWest"))
+
+IECV_vlong_PP$study<-droplevels(IECV_vlong_PP$study)
+
+#levels(IECV_vbase_PP$study)
+
+mmse.PP<-lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PP)
+
+mds.PP<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PP)
+
+Mixed_PP<-list(mmse.PP,mds.PP) 
+
+Cox_PP<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_PP, x = TRUE,model = TRUE)
+#cox.zph(Cox_PP) all pass
+
+#jm_dev.PP<-jm(Cox_PP,Mixed_objects = Mixed_PP,time_var = "followupyears") 
+
+summary(jm_dev.PP)
+
+#-----validate in CamPalGN----
+
+#IECV_vlong_Cam<-data_long.fit.up.noPIC%>%
+#  filter(study=="CamPalGN")
+
+#IECV_vlong_Cam$study<-droplevels(IECV_vlong_Cam$study)
+
+#levels(IECV_vlong_Cam$study)<-c("PICNICS","ParkWest") #Only take NYPUM levels, other levels won't be used
+
+roc.Cam.CPP.0<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 0,Dt=3,cores=1L)
+roc.Cam.CPP.1<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 1,Dt=3,cores=1L)
+roc.Cam.CPP.2<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 2,Dt=3,cores=1L)
+roc.Cam.CPP.3<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 3,Dt=3,cores=1L)
+roc.Cam.CPP.4<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 4,Dt=3,cores=1L)
+#roc.Cam.CPP.5<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 5,Dt=3,cores=1L)
+#roc.Cam.CPP.6<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 6,Dt=3,cores=1L)
+
+
+tvAUC(roc.Cam.CPP.0)
+tvAUC(roc.Cam.CPP.1)
+tvAUC(roc.Cam.CPP.2)
+tvAUC(roc.Cam.CPP.3)
+tvAUC(roc.Cam.CPP.4)
+#tvAUC(roc.Cam.CPP.5)
+#tvAUC(roc.Cam.CPP.6)
+
+
+#png("IECV-Cam.png",width = 4200,height =2000,res = 400)
+#par(mfrow=c(2,4))
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 4,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 5,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 6,Dt=3,plot = TRUE)
+#dev.off()
 
 ```
