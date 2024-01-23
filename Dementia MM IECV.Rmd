@@ -685,3 +685,181 @@ calibration_plot(jm_dev.PP,newdata = IECV_vlong_Cam,Tstart = 4,Dt=3,plot = TRUE)
 dev.off()
 
 ```
+
+
+```{r IECV model from ParkWest and CamPalGN, validation in ParkWest}
+
+IECV_vbase_Cam<-data.baseline.fit.up%>%
+  filter(study %in% c("CamPalGN"))
+
+IECV_vbase_Cam$study<-droplevels(IECV_vbase_Cam$study)
+
+IECV_vlong_Cam<-data_long.fit.up%>%
+  filter(study %in% c("CamPalGN"))
+
+IECV_vlong_Cam$study<-droplevels(IECV_vlong_Cam$study)
+
+#levels(IECV_vbase_Cam$study)
+
+mmse.Cam<-lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_Cam)
+
+mds.Cam<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_Cam)
+
+Mixed_Cam<-list(mmse.Cam,mds.Cam) 
+
+Cox_Cam<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_Cam, x = TRUE,model = TRUE)
+#cox.zph(Cox_Cam) all pass
+
+#jm_dev.Cam<-jm(Cox_Cam,Mixed_objects = Mixed_Cam,time_var = "followupyears") 
+
+summary(jm_dev.Cam)
+
+#-----validate in ParkWest----
+
+IECV_vlong_PA<-data_long.fit.up.noPIC%>%
+  filter(study=="ParkWest")
+
+IECV_vlong_PA$study<-droplevels(IECV_vlong_PA$study)
+
+roc.pa.0<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,cores=1L)
+roc.pa.1<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 1,Dt=3,cores=1L)
+roc.pa.2<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,cores=1L)
+roc.pa.3<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,cores=1L)
+roc.pa.4<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.pa.0)
+tvAUC(roc.pa.1)
+tvAUC(roc.pa.2)
+tvAUC(roc.pa.3)
+tvAUC(roc.pa.4)
+
+
+png("EV-pa.png",width = 3000,height =2000,res = 400)
+par(mfrow=c(2,3))
+calibration_plot(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,plot = TRUE)
+dev.off()
+
+```
+
+```{r summary above}
+
+#The model development from NYPUM and PINE is good, both in NYPUM and PINE
+
+#The model development from CamPalGN and ParkWest, only good in CamPalGN
+
+#I am now try develop model just for PICNICS and ParkWest
+
+#---model just develop from ParkWest---
+
+summary(jm_dev.PP)
+
+#-----validate in PICNICS----
+
+IECV_vlong_PIC<-data_long.fit.up%>%
+  filter(study=="PICNICS")
+
+IECV_vlong_PIC$study<-droplevels(IECV_vlong_PIC$study)
+
+roc.pic.0<-tvROC(jm_dev.PP,newdata=IECV_vlong_PIC,Tstart = 0,Dt=3,cores=1L)
+roc.pic.1<-tvROC(jm_dev.PP,newdata=IECV_vlong_PIC,Tstart = 1,Dt=3,cores=1L)
+roc.pic.2<-tvROC(jm_dev.PP,newdata=IECV_vlong_PIC,Tstart = 2,Dt=3,cores=1L)
+roc.pic.3<-tvROC(jm_dev.PP,newdata=IECV_vlong_PIC,Tstart = 3,Dt=3,cores=1L)
+roc.pic.4<-tvROC(jm_dev.PP,newdata=IECV_vlong_PIC,Tstart = 4,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.pic.0)
+tvAUC(roc.pic.1)
+tvAUC(roc.pic.2)
+tvAUC(roc.pic.3)
+tvAUC(roc.pic.4)
+
+```
+
+```{r model development on PICNICS and validate on ParkWest}
+
+#I am now only develop model for PICNICS
+
+IECV_vlong_PIC<-data_long.fit.up%>%
+  filter(study=="PICNICS")
+
+IECV_vlong_PIC$study<-droplevels(IECV_vlong_PIC$study)
+
+IECV_vbase_PIC<-data.baseline.fit.up%>%
+  filter(study %in% c("PICNICS"))
+
+IECV_vbase_PIC$study<-droplevels(IECV_vbase_PIC$study)
+
+mmse.PIC<-lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PIC)
+
+mds.PIC<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PIC)
+
+Mixed_PIC<-list(mmse.PIC,mds.PIC) 
+
+Cox_PIC<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_PIC, x = TRUE,model = TRUE)
+
+#jm_dev.PIC<-jm(Cox_PIC,Mixed_objects = Mixed_PIC,time_var = "followupyears") 
+
+summary(jm_dev.PIC)
+
+
+#-----validate in ParkWest----
+
+
+roc.pa.p.0<-tvROC(jm_dev.PIC,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,cores=1L)
+roc.pa.p.1<-tvROC(jm_dev.PIC,newdata=IECV_vlong_PA,Tstart = 1,Dt=3,cores=1L)
+roc.pa.p.2<-tvROC(jm_dev.PIC,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,cores=1L)
+roc.pa.p.3<-tvROC(jm_dev.PIC,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,cores=1L)
+roc.pa.p.4<-tvROC(jm_dev.PIC,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.pa.p.0)
+tvAUC(roc.pa.p.1)
+tvAUC(roc.pa.p.2)
+tvAUC(roc.pa.p.3)
+tvAUC(roc.pa.p.4)
+
+```
+
+```{r model developement from CamPalGN and PICNICS AND IECV on them}
+
+#----Validate in CamPalGN---
+
+roc.Cam.PIC.0<-tvROC(jm_dev.PIC,newdata=IECV_vlong_Cam,Tstart = 0,Dt=3,cores=1L)
+roc.Cam.PIC.1<-tvROC(jm_dev.PIC,newdata=IECV_vlong_Cam,Tstart = 1,Dt=3,cores=1L)
+roc.Cam.PIC.2<-tvROC(jm_dev.PIC,newdata=IECV_vlong_Cam,Tstart = 2,Dt=3,cores=1L)
+roc.Cam.PIC.3<-tvROC(jm_dev.PIC,newdata=IECV_vlong_Cam,Tstart = 3,Dt=3,cores=1L)
+roc.Cam.PIC.4<-tvROC(jm_dev.PIC,newdata=IECV_vlong_Cam,Tstart = 4,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.Cam.PIC.0)
+tvAUC(roc.Cam.PIC.1)
+tvAUC(roc.Cam.PIC.2)
+tvAUC(roc.Cam.PIC.3)
+tvAUC(roc.Cam.PIC.4)
+
+#----Validate in PICNICS---
+
+roc.pic.c.0<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PIC,Tstart = 0,Dt=3,cores=1L)
+roc.pic.c.1<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PIC,Tstart = 1,Dt=3,cores=1L)
+roc.pic.c.2<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PIC,Tstart = 2,Dt=3,cores=1L)
+roc.pic.c.3<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PIC,Tstart = 3,Dt=3,cores=1L)
+roc.pic.c.4<-tvROC(jm_dev.Cam,newdata=IECV_vlong_PIC,Tstart = 4,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.pic.c.0)
+tvAUC(roc.pic.c.1)
+tvAUC(roc.pic.c.2)
+tvAUC(roc.pic.c.3)
+tvAUC(roc.pic.c.4)
+
+```
