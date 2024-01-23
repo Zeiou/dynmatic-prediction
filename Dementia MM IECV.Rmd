@@ -416,6 +416,39 @@ calibration_plot(jm_dev.PIN,newdata = IECV_vlong_PIN,Tstart = 6,Dt=3,plot = TRUE
 
 ```
 
+```{r develop model from NYPUM and PINE studies}
+
+IECV_vbase_NP<-data.baseline.fit.up%>%
+  filter(study %in% c("NYPUM","PINE"))
+
+IECV_vbase_NP$study<-droplevels(IECV_vbase_NP$study)
+
+IECV_vlong_NP<-data_long.fit.up%>%
+  filter(study %in% c("NYPUM","PINE"))
+
+IECV_vlong_NP$study<-droplevels(IECV_vlong_NP$study)
+
+Cox_NP<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_vbase_NP, x = TRUE,model = TRUE)
+
+cox.zph(Cox_NP) #study pass, Global pass
+
+
+mmse.NP<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_NP)
+
+mds.NP<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_NP)
+
+Mixed_NP<-list(mmse.NP,mds.NP) 
+
+Cox_NP<-coxph(Surv(years,cens)~study+agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_NP, x = TRUE,model = TRUE)
+
+cox.zph(Cox_NP) #study is 0.015, but global pass
+
+#jm_dev.NP<-jm(Cox_NP,Mixed_objects = Mixed_NP,time_var = "followupyears")
+
+summary(jm_dev.NP)
+
+```
+
 
 ```{r extre validation only NYPUM and the model only develop with PINE study}
 
@@ -485,21 +518,88 @@ dev.off()
 
 ```
 
-```{r develop model from other three studies}
+
+```{r extre validation only PINE and the model only develop with NYPUM study}
+
+#----NYPUM dataset-----
+
+IECV_vlong_NY<-data_long.fit.up.noPIC%>%
+  filter(study=="NYPUM")
+
+IECV_vlong_NY$study<-droplevels(IECV_vlong_NY$study)
+
+IECV_vbase_NY<-data.baseline.fit.up.noPIC%>%
+  filter(study=="NYPUM")
+
+IECV_vbase_NY$study<-droplevels(IECV_vbase_NY$study)
+
+
+mmse.NYPUM<-lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_NY)
+
+mds.NYPUM<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_NY)
+
+Mixed_NYPUM<-list(mmse.NYPUM,mds.NYPUM) 
+
+Cox_NYPUM<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_NY, x = TRUE,model = TRUE)  
+
+#jm_NYPUM<-jm(Cox_NYPUM,Mixed_objects = Mixed_NYPUM,time_var = "followupyears") 
+
+summary(jm_NYPUM)
+
+
+#----Validate in PINE study----
+
+#IECV_vlong_PIN
+
+
+roc.pi.0<-tvROC(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 0,Dt=3,cores=1L)
+roc.pi.1<-tvROC(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 1,Dt=3,cores=1L)
+roc.pi.2<-tvROC(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 2,Dt=3,cores=1L)
+roc.pi.3<-tvROC(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 3,Dt=3,cores=1L)
+roc.pi.4<-tvROC(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 4,Dt=3,cores=1L)
+roc.pi.5<-tvROC(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 5,Dt=3,cores=1L)
+roc.pi.6<-tvROC(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 6,Dt=3,cores=1L)
+
+
+
+tvAUC(roc.pi.0)
+tvAUC(roc.pi.1)
+tvAUC(roc.pi.2)
+tvAUC(roc.pi.3)
+tvAUC(roc.pi.4)
+tvAUC(roc.pi.5)
+tvAUC(roc.pi.6)
+
+
+#png("EV-pi.png",width = 4200,height =2000,res = 400)
+#par(mfrow=c(2,4))
+calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 4,Dt=3,plot = TRUE)
+calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 5,Dt=3,plot = TRUE)
+calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 6,Dt=3,plot = TRUE)
+#dev.off()
+
+```
+
+
+```{r develop model from CamPalGN and ParkWest study}
 
 IECV_vbase_CPP<-data.baseline.fit.up%>%
-  filter(study %in% c("CamPalGN","PICNICS","ParkWest"))
+  filter(study %in% c("CamPalGN","ParkWest"))
 
 IECV_vbase_CPP$study<-droplevels(IECV_vbase_CPP$study)
 
 IECV_vlong_CPP<-data_long.fit.up%>%
-  filter(study %in% c("CamPalGN","PICNICS","ParkWest"))
+  filter(study %in% c("CamPalGN","ParkWest"))
 
 IECV_vlong_CPP$study<-droplevels(IECV_vlong_CPP$study)
 
-Cox_CPP<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_vbase_CPP, x = TRUE,model = TRUE)
+#Cox_CPP<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl+study,data=IECV_vbase_CPP, x = TRUE,model = TRUE)
 
-cox.zph(Cox_CPP) #didn't pass study 0.02, hallucination 0.03, but it may because the sample size is small.
+#cox.zph(Cox_CPP) #study pass, Global pass
 
 
 mmse.CPP<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP)
@@ -514,10 +614,12 @@ Cox_CPP<-coxph(Surv(years,cens)~study+agebl+sex+hybl+cognitivebl+hallucinationsb
 
 summary(jm_dev.CPP)
 
+
+
 ```
 
 
-```{r IECV model from PCC and validation in CamPalGN}
+```{r IECV model from ParkWest and CamPalGN and validation in CamPalGN}
 
 #So the model developement from PICNICS and ParkWest and validate in CamPalGN is bad
 
@@ -562,8 +664,7 @@ roc.Cam.CPP.1<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 1,Dt=3,cores=1L)
 roc.Cam.CPP.2<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 2,Dt=3,cores=1L)
 roc.Cam.CPP.3<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 3,Dt=3,cores=1L)
 roc.Cam.CPP.4<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 4,Dt=3,cores=1L)
-#roc.Cam.CPP.5<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 5,Dt=3,cores=1L)
-#roc.Cam.CPP.6<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 6,Dt=3,cores=1L)
+
 
 
 tvAUC(roc.Cam.CPP.0)
@@ -571,19 +672,16 @@ tvAUC(roc.Cam.CPP.1)
 tvAUC(roc.Cam.CPP.2)
 tvAUC(roc.Cam.CPP.3)
 tvAUC(roc.Cam.CPP.4)
-#tvAUC(roc.Cam.CPP.5)
-#tvAUC(roc.Cam.CPP.6)
 
 
-#png("IECV-Cam.png",width = 4200,height =2000,res = 400)
-#par(mfrow=c(2,4))
-calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 0,Dt=3,plot = TRUE)
-calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 1,Dt=3,plot = TRUE)
-calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 2,Dt=3,plot = TRUE)
-calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 3,Dt=3,plot = TRUE)
-calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 4,Dt=3,plot = TRUE)
-calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 5,Dt=3,plot = TRUE)
-calibration_plot(jm_dev.Cam,newdata = IECV_vlong_Cam,Tstart = 6,Dt=3,plot = TRUE)
-#dev.off()
+
+png("IECV-Cam.PP.png",width = 3000,height =2000,res = 400)
+par(mfrow=c(2,3))
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_Cam,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_Cam,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_Cam,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_Cam,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_Cam,Tstart = 4,Dt=3,plot = TRUE)
+dev.off()
 
 ```
