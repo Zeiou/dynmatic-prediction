@@ -585,7 +585,9 @@ calibration_plot(jm_NYPUM,newdata=IECV_vlong_PIN,Tstart = 6,Dt=3,plot = TRUE)
 ```
 
 
-```{r develop model from CamPalGN and ParkWest study}
+```{r develop model from CamPalGN PICNICS ParkWest and did the IECV}
+
+#------develop model from CamPalGN and ParkWest study----
 
 IECV_vbase_CPP<-data.baseline.fit.up%>%
   filter(study %in% c("CamPalGN","ParkWest"))
@@ -614,7 +616,124 @@ Cox_CPP<-coxph(Surv(years,cens)~study+agebl+sex+hybl+cognitivebl+hallucinationsb
 
 summary(jm_dev.CPP)
 
+#-----validate on PICNICS----
 
+IECV_vlong_PIC<-data_long.fit.up%>%
+  filter(study=="PICNICS")
+
+IECV_vlong_PIC$study<-droplevels(IECV_vlong_PIC$study)
+
+levels(IECV_vlong_PIC$study)<-c("ParkWest","CamPalGN")
+
+roc.p.c.0<-tvROC(jm_dev.CPP,newdata=IECV_vlong_PIC,Tstart = 0,Dt=3,cores=1L)
+roc.p.c.1<-tvROC(jm_dev.CPP,newdata=IECV_vlong_PIC,Tstart = 1,Dt=3,cores=1L)
+roc.p.c.2<-tvROC(jm_dev.CPP,newdata=IECV_vlong_PIC,Tstart = 2,Dt=3,cores=1L)
+roc.p.c.3<-tvROC(jm_dev.CPP,newdata=IECV_vlong_PIC,Tstart = 3,Dt=3,cores=1L)
+roc.p.c.4<-tvROC(jm_dev.CPP,newdata=IECV_vlong_PIC,Tstart = 4,Dt=3,cores=1L)
+roc.p.c.5<-tvROC(jm_dev.CPP,newdata=IECV_vlong_PIC,Tstart = 5,Dt=3,cores=1L)
+
+tvAUC(roc.p.c.0)
+tvAUC(roc.p.c.1)
+tvAUC(roc.p.c.2)
+tvAUC(roc.p.c.3)
+tvAUC(roc.p.c.4)
+tvAUC(roc.p.c.5)
+
+#------develop model from PICNICS and ParkWest study----
+
+IECV_vbase_CPP2<-data.baseline.fit.up%>%
+  filter(study %in% c("PICNICS","ParkWest"))
+
+IECV_vbase_CPP2$study<-droplevels(IECV_vbase_CPP2$study)
+
+IECV_vlong_CPP2<-data_long.fit.up%>%
+  filter(study %in% c("PICNICS","ParkWest"))
+
+IECV_vlong_CPP2$study<-droplevels(IECV_vlong_CPP2$study)
+
+mmse.CPP2<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP2)
+
+mds.CPP2<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP2)
+
+Mixed_CPP2<-list(mmse.CPP2,mds.CPP2) 
+
+Cox_CPP2<-coxph(Surv(years,cens)~study+agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_CPP2, x = TRUE,model = TRUE)
+
+#jm_dev.CPP2<-jm(Cox_CPP2,Mixed_objects = Mixed_CPP2,time_var = "followupyears") 
+
+summary(jm_dev.CPP2)
+
+#-----validate on CamPalGN----
+
+IECV_vlong_Cam<-data_long.fit.up%>%
+  filter(study=="CamPalGN")
+
+IECV_vlong_Cam$study<-droplevels(IECV_vlong_Cam$study)
+
+levels(IECV_vlong_Cam$study)<-c("PICNICS","ParkWest")
+
+roc.c.p.0<-tvROC(jm_dev.CPP2,newdata=IECV_vlong_Cam,Tstart = 0,Dt=3,cores=1L)
+roc.c.p.1<-tvROC(jm_dev.CPP2,newdata=IECV_vlong_Cam,Tstart = 1,Dt=3,cores=1L)
+roc.c.p.2<-tvROC(jm_dev.CPP2,newdata=IECV_vlong_Cam,Tstart = 2,Dt=3,cores=1L)
+roc.c.p.3<-tvROC(jm_dev.CPP2,newdata=IECV_vlong_Cam,Tstart = 3,Dt=3,cores=1L)
+roc.c.p.4<-tvROC(jm_dev.CPP2,newdata=IECV_vlong_Cam,Tstart = 4,Dt=3,cores=1L)
+roc.c.p.5<-tvROC(jm_dev.CPP2,newdata=IECV_vlong_Cam,Tstart = 5,Dt=3,cores=1L)
+
+tvAUC(roc.c.p.0)
+tvAUC(roc.c.p.1)
+tvAUC(roc.c.p.2)
+tvAUC(roc.c.p.3)
+tvAUC(roc.c.p.4)
+tvAUC(roc.c.p.5)
+
+#------develop model from CamPalGN and PICNICS study----
+
+IECV_vbase_CPP3<-data.baseline.fit.up%>%
+  filter(study %in% c("CamPalGN","PICNICS"))
+
+IECV_vbase_CPP3$study<-droplevels(IECV_vbase_CPP3$study)
+
+IECV_vlong_CPP3<-data_long.fit.up%>%
+  filter(study %in% c("CamPalGN","PICNICS"))
+
+IECV_vlong_CPP3$study<-droplevels(IECV_vlong_CPP3$study)
+
+mmse.CPP3<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP3)
+
+#The linear mixed model mmse, has covergence problem,even change to just follow-up year still has this problem
+
+mds.CPP3<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP3)
+
+Mixed_CPP3<-list(mmse.CPP3,mds.CPP3) 
+
+Cox_CPP3<-coxph(Surv(years,cens)~study+agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_CPP3, x = TRUE,model = TRUE)
+
+jm_dev.CPP3<-jm(Cox_CPP3,Mixed_objects = Mixed_CPP3,time_var = "followupyears") 
+
+summary(jm_dev.CPP3)
+
+#-----validate on ParkWest----
+
+IECV_vlong_PA<-data_long.fit.up%>%
+  filter(study=="ParkWest")
+
+IECV_vlong_PA$study<-droplevels(IECV_vlong_PA$study)
+
+levels(IECV_vlong_PA$study)<-c("PICNICS","CamPalGN")
+
+roc.p.p.0<-tvROC(jm_dev.CPP3,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,cores=1L)
+roc.p.p.1<-tvROC(jm_dev.CPP3,newdata=IECV_vlong_PA,Tstart = 1,Dt=3,cores=1L)
+roc.p.p.2<-tvROC(jm_dev.CPP3,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,cores=1L)
+roc.p.p.3<-tvROC(jm_dev.CPP3,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,cores=1L)
+roc.p.p.4<-tvROC(jm_dev.CPP3,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)
+roc.p.p.5<-tvROC(jm_dev.CPP3,newdata=IECV_vlong_PA,Tstart = 5,Dt=3,cores=1L)
+
+tvAUC(roc.p.p.0)
+tvAUC(roc.p.p.1)
+tvAUC(roc.p.p.2)
+tvAUC(roc.p.p.3)
+tvAUC(roc.p.p.4)
+tvAUC(roc.p.p.5)
 
 ```
 
@@ -751,6 +870,8 @@ dev.off()
 
 #The model development from NYPUM and PINE is good, both in NYPUM and PINE
 
+#The model development from CamPalGN, PICNICS, ParkWest are bad, and cannot perform IECV on ParkWest as the data of CamPalGN and PICNICS the mmse is not convergence
+
 #The model development from CamPalGN and ParkWest, only good in CamPalGN
 
 #I am now try develop model just for PICNICS and ParkWest
@@ -779,6 +900,16 @@ tvAUC(roc.pic.1)
 tvAUC(roc.pic.2)
 tvAUC(roc.pic.3)
 tvAUC(roc.pic.4)
+
+
+png("IECV-PIC.PP.png",width = 3000,height =2000,res = 400)
+par(mfrow=c(2,3))
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PIC,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PIC,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PIC,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PIC,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PIC,Tstart = 4,Dt=3,plot = TRUE)
+dev.off()
 
 ```
 
@@ -861,5 +992,132 @@ tvAUC(roc.pic.c.1)
 tvAUC(roc.pic.c.2)
 tvAUC(roc.pic.c.3)
 tvAUC(roc.pic.c.4)
+
+```
+
+
+```{r predict individal in NYPUM}
+
+#JM model is jm_dev.NP
+
+IECV_vlong_NY%>%
+  filter(cens==1)
+
+#random select idpicc==305
+
+predict.data<-IECV_vlong_NY[IECV_vlong_NY$idpicc == 308,] #event at 8.5 years
+
+levels(predict.data$study)<-c("NYPUM","PINE") #it will only take NYPUM level
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predMMSE.0<-predict(jm_dev.NP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jm_dev.NP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.0,predSurv.0)
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<1.1,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1.1 
+
+predMMSE.1<-predict(jm_dev.NP,newdata = predict.data.time.1,times = seq(1.1,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jm_dev.NP,newdata = predict.data.time.1,process = "event",times = seq(1.1,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.1,predSurv.1)
+
+#-----From baseline up to 2 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2
+
+predMMSE.2<-predict(jm_dev.NP,newdata = predict.data.time.2,times = seq(2,5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jm_dev.NP,newdata = predict.data.time.2,process = "event",times = seq(2,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.2,predSurv.2)
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3.05 
+
+#predict for longitudinal outcomes
+
+predMMSE.3<-predict(jm_dev.NP,newdata = predict.data.time.3,times = seq(3.05,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jm_dev.NP,newdata = predict.data.time.3,process = "event",times = seq(3.05,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.3,predSurv.3)
+
+#------From baseline up to 4 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4.05 
+
+#predict for longitudinal outcomes
+
+predMMSE.4<-predict(jm_dev.NP,newdata = predict.data.time.4,times = seq(4.05,7, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jm_dev.NP,newdata = predict.data.time.4,process = "event",times = seq(4.05,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.4,predSurv.4)
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5.06 
+
+#predict for longitudinal outcomes
+
+predMMSE.5<-predict(jm_dev.NP,newdata = predict.data.time.5,times = seq(5.06,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jm_dev.NP,newdata = predict.data.time.5,process = "event",times = seq(5.06,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.5,predSurv.5)
+
+#------From baseline up to 7 years-----
+
+predict.data.time.7<-predict.data[predict.data$followupyears<8,] 
+
+predict.data.time.7$cens<-0 #not event
+
+predict.data.time.7$years<-7.06
+
+#predict for longitudinal outcomes
+
+predMMSE.7<-predict(jm_dev.NP,newdata = predict.data.time.7,times = seq(7.06,10, length.out=20),return_newdata = T) #for future time point
+
+predSurv.7<-predict(jm_dev.NP,newdata = predict.data.time.7,process = "event",times = seq(7.06,10, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.7,predSurv.7)
+
+
+
+
 
 ```
