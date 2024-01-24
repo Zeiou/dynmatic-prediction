@@ -996,16 +996,116 @@ tvAUC(roc.pic.c.4)
 ```
 
 
+```{r bootstrap for ParkWest}
+
+#-----predictive performance at original data set-----
+
+roc.pa.or.0<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,cores=1L)
+roc.pa.or.1<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 1,Dt=3,cores=1L)
+roc.pa.or.2<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,cores=1L)
+roc.pa.or.3<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,cores=1L)
+roc.pa.or.4<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)
+
+
+tvAUC(roc.pa.or.0) #0.6263
+tvAUC(roc.pa.or.1) #0.6096
+tvAUC(roc.pa.or.2) #0.6722
+tvAUC(roc.pa.or.3) #0.6149
+tvAUC(roc.pa.or.4) #0.5953
+
+
+#----Bootstrap dataset----
+
+#use the baseline dataset to create the bootstrap dataset
+
+IECV_vbase_PA<-data.baseline.fit.up%>%
+  filter(study %in% c("ParkWest"))
+
+IECV_vbase_PA$study<-droplevels(IECV_vbase_PA$study)
+
+n<-dim(IECV_vbase_PA)[1]
+tauc_opt.0<-numeric()
+tauc_opt.1<-numeric()
+tauc_opt.2<-numeric()
+tauc_opt.3<-numeric()
+tauc_opt.4<-numeric()
+
+for (i in 1:100) {
+  print(i)
+  # A sample of size n is generated with replacement from the original data set, 
+  # where patients are drawn by identification number.
+  set.seed(2020 + i)
+  n_new <- sample(1:n, n, replace=TRUE)
+  n_new <- sort(n_new, decreasing = FALSE)
+  
+  trainingData <- NULL
+  k <- 1
+  for (j in 1:length(n_new)){
+    n_len <- length(IECV_vlong_PA$idpicc[IECV_vlong_PA$idpicc %in% n_new[j]])
+    newdata <- IECV_vlong_PA[IECV_vlong_PA$idpicc %in% n_new[j],]
+    newdata$id <- as.numeric(newdata$id)
+    newdata$id <- k
+    trainingData <- rbind(trainingData, newdata)
+    k <- k + 1
+  }
+  trainingData.id <- trainingData[!duplicated(trainingData$id), ]
+  
+  # A new model is fitted using the generated sample and including
+  # all n patients and all time points.
+  fit1.mmse <- lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc,
+                        data = trainingData)
+  fit2.mds <- lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=trainingData)
+  
+  Mixed_fit12.PA<-list(fit1.mmse,fit2.mds)
+  
+  survFit1 <- coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl, 
+                       data = trainingData.id, x = TRUE,model = TRUE)
+  
+  jointFit1 <- jm(survFit1,Mixed_objects=Mixed_fit12.PA, time_var = "followupyears")
+  
+  #The predictive measures on the bootstrap data from the model fitted on the bootstrap sample
+  
+  auc_boot.0 <- tvAUC(jointFit1,newdata=trainingData,Tstart = 0,Dt=3,cores=1L)$auc
+  auc_boot.1 <- tvAUC(jointFit1,newdata=trainingData,Tstart = 1,Dt=3,cores=1L)$auc
+  auc_boot.2 <- tvAUC(jointFit1,newdata=trainingData,Tstart = 2,Dt=3,cores=1L)$auc
+  auc_boot.3 <- tvAUC(jointFit1,newdata=trainingData,Tstart = 3,Dt=3,cores=1L)$auc
+  auc_boot.4 <- tvAUC(jointFit1,newdata=trainingData,Tstart = 4,Dt=3,cores=1L)$auc
+  
+  #the predictive measures on the original data from the model fitted on the bootstrap.
+  
+  auc_orig.0 <- tvAUC(jointFit1,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,cores=1L)$auc
+  auc_orig.1 <- tvAUC(jointFit1,newdata=IECV_vlong_PA,Tstart = 1,Dt=3,cores=1L)$auc
+  auc_orig.2 <- tvAUC(jointFit1,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,cores=1L)$auc
+  auc_orig.3 <- tvAUC(jointFit1,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,cores=1L)$auc
+  auc_orig.4 <- tvAUC(jointFit1,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)$auc
+  
+  # The optimism in the prediction performance is estimated by subtracting the measures boot and org.
+  tauc_opt.0[i] <- auc_boot.0 - auc_orig.0
+  tauc_opt.1[i] <- auc_boot.1 - auc_orig.1
+  tauc_opt.2[i] <- auc_boot.2 - auc_orig.2
+  tauc_opt.3[i] <- auc_boot.3 - auc_orig.3
+  tauc_opt.4[i] <- auc_boot.4 - auc_orig.4
+}
+
+
+
+
+```
+
+
+
+
 ```{r predict individal in NYPUM}
 
 #JM model is jm_dev.NP
 
 IECV_vlong_NY%>%
-  filter(cens==1)
+  filter(cens==1)%>%
+  filter(followupyears>3)
 
-#random select idpicc==305
+#random select idpicc==351
 
-predict.data<-IECV_vlong_NY[IECV_vlong_NY$idpicc == 308,] #event at 8.5 years
+predict.data<-IECV_vlong_NY[IECV_vlong_NY$idpicc == 351,] #event at 8.5 years
 
 levels(predict.data$study)<-c("NYPUM","PINE") #it will only take NYPUM level
 
@@ -1021,7 +1121,7 @@ predMMSE.0<-predict(jm_dev.NP,newdata = predict.data.time.0,times = seq(0,3, len
 
 predSurv.0<-predict(jm_dev.NP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.0,predSurv.0)
+plot(predMMSE.0,predSurv.0,outcomes=1:2)
 
 #-----From baseline up to 1 year-----
 
@@ -1029,14 +1129,99 @@ predict.data.time.1<-predict.data[predict.data$followupyears<1.1,]
 
 predict.data.time.1$cens<-0 #not event
 
-predict.data.time.1$years<-1.1 
+predict.data.time.1$years<-1.02 
 
-predMMSE.1<-predict(jm_dev.NP,newdata = predict.data.time.1,times = seq(1.1,4, length.out=20),return_newdata = T) #for future time point
+predMMSE.1<-predict(jm_dev.NP,newdata = predict.data.time.1,times = seq(1.02,4, length.out=20),return_newdata = T) #for future time point
 
-predSurv.1<-predict(jm_dev.NP,newdata = predict.data.time.1,process = "event",times = seq(1.1,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.1<-predict(jm_dev.NP,newdata = predict.data.time.1,process = "event",times = seq(1.02,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
 
-plot(predMMSE.1,predSurv.1)
+plot(predMMSE.1,predSurv.1,outcomes=1:2)
+
+#-----From baseline up to 2 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<2.1,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2.07
+
+predMMSE.2<-predict(jm_dev.NP,newdata = predict.data.time.2,times = seq(2.07,5, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jm_dev.NP,newdata = predict.data.time.2,process = "event",times = seq(2.07,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.2,predSurv.2,outcomes=1:2)
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3 
+
+#predict for longitudinal outcomes
+
+predMMSE.3<-predict(jm_dev.NP,newdata = predict.data.time.3,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jm_dev.NP,newdata = predict.data.time.3,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.3,predSurv.3,outcomes=1:2)
+
+#------From baseline up to 4 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<4,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4
+
+#predict for longitudinal outcomes
+
+predMMSE.4<-predict(jm_dev.NP,newdata = predict.data.time.4,times = seq(4,7, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jm_dev.NP,newdata = predict.data.time.4,process = "event",times = seq(4,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.4,predSurv.4,outcomes=1:2)
+
+```
+
+
+```{r idpicc is 323 NYPUM}
+
+
+predict.data<-IECV_vlong_NY[IECV_vlong_NY$idpicc == 323,] #event at 7.5 years
+
+levels(predict.data$study)<-c("NYPUM","PINE") #it will only take NYPUM level
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predMMSE.0<-predict(jm_dev.NP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jm_dev.NP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.0,predSurv.0,outcomes=1:2)
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<1,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1
+
+predMMSE.1<-predict(jm_dev.NP,newdata = predict.data.time.1,times = seq(1,4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jm_dev.NP,newdata = predict.data.time.1,process = "event",times = seq(1,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predMMSE.1,predSurv.1,outcomes=1:2)
 
 #-----From baseline up to 2 year-----
 
@@ -1050,74 +1235,87 @@ predMMSE.2<-predict(jm_dev.NP,newdata = predict.data.time.2,times = seq(2,5, len
 
 predSurv.2<-predict(jm_dev.NP,newdata = predict.data.time.2,process = "event",times = seq(2,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.2,predSurv.2)
+plot(predMMSE.2,predSurv.2,outcomes=1:2)
 
 #------From baseline up to 3 years-----
 
-predict.data.time.3<-predict.data[predict.data$followupyears<4,] 
+predict.data.time.3<-predict.data[predict.data$followupyears<3,] 
 
 predict.data.time.3$cens<-0 #not event
 
-predict.data.time.3$years<-3.05 
+predict.data.time.3$years<-3
 
 #predict for longitudinal outcomes
 
-predMMSE.3<-predict(jm_dev.NP,newdata = predict.data.time.3,times = seq(3.05,6, length.out=20),return_newdata = T) #for future time point
+predMMSE.3<-predict(jm_dev.NP,newdata = predict.data.time.3,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
 
-predSurv.3<-predict(jm_dev.NP,newdata = predict.data.time.3,process = "event",times = seq(3.05,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.3<-predict(jm_dev.NP,newdata = predict.data.time.3,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.3,predSurv.3)
+plot(predMMSE.3,predSurv.3,outcomes=1:2)
 
 #------From baseline up to 4 years-----
 
-predict.data.time.4<-predict.data[predict.data$followupyears<5,] 
+predict.data.time.4<-predict.data[predict.data$followupyears<4,] 
 
 predict.data.time.4$cens<-0 #not event
 
-predict.data.time.4$years<-4.05 
+predict.data.time.4$years<-4 
 
 #predict for longitudinal outcomes
 
-predMMSE.4<-predict(jm_dev.NP,newdata = predict.data.time.4,times = seq(4.05,7, length.out=20),return_newdata = T) #for future time point
+predMMSE.4<-predict(jm_dev.NP,newdata = predict.data.time.4,times = seq(4,7, length.out=20),return_newdata = T) #for future time point
 
-predSurv.4<-predict(jm_dev.NP,newdata = predict.data.time.4,process = "event",times = seq(4.05,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.4<-predict(jm_dev.NP,newdata = predict.data.time.4,process = "event",times = seq(4,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.4,predSurv.4)
+plot(predMMSE.4,predSurv.4,outcomes=1:2)
 
 #------From baseline up to 5 years-----
 
-predict.data.time.5<-predict.data[predict.data$followupyears<6,] 
+predict.data.time.5<-predict.data[predict.data$followupyears<5,] 
 
 predict.data.time.5$cens<-0 #not event
 
-predict.data.time.5$years<-5.06 
+predict.data.time.5$years<-5 
 
 #predict for longitudinal outcomes
 
-predMMSE.5<-predict(jm_dev.NP,newdata = predict.data.time.5,times = seq(5.06,8, length.out=20),return_newdata = T) #for future time point
+predMMSE.5<-predict(jm_dev.NP,newdata = predict.data.time.5,times = seq(5,8, length.out=20),return_newdata = T) #for future time point
 
-predSurv.5<-predict(jm_dev.NP,newdata = predict.data.time.5,process = "event",times = seq(5.06,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.5<-predict(jm_dev.NP,newdata = predict.data.time.5,process = "event",times = seq(5,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.5,predSurv.5)
+plot(predMMSE.5,predSurv.5,outcomes=1:2)
+
+#------From baseline up to 6 years-----
+
+predict.data.time.6<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.6$cens<-0 #not event
+
+predict.data.time.6$years<-6
+
+#predict for longitudinal outcomes
+
+predMMSE.6<-predict(jm_dev.NP,newdata = predict.data.time.7,times = seq(6,10, length.out=20),return_newdata = T) #for future time point
+
+predSurv.6<-predict(jm_dev.NP,newdata = predict.data.time.7,process = "event",times = seq(6,10, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predMMSE.6,predSurv.6,outcomes=1:2)
 
 #------From baseline up to 7 years-----
 
-predict.data.time.7<-predict.data[predict.data$followupyears<8,] 
+predict.data.time.7<-predict.data[predict.data$followupyears<7,] 
 
 predict.data.time.7$cens<-0 #not event
 
-predict.data.time.7$years<-7.06
+predict.data.time.7$years<-7
 
 #predict for longitudinal outcomes
 
-predMMSE.7<-predict(jm_dev.NP,newdata = predict.data.time.7,times = seq(7.06,10, length.out=20),return_newdata = T) #for future time point
+predMMSE.7<-predict(jm_dev.NP,newdata = predict.data.time.7,times = seq(7,10, length.out=20),return_newdata = T) #for future time point
 
-predSurv.7<-predict(jm_dev.NP,newdata = predict.data.time.7,process = "event",times = seq(7.06,10, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.7<-predict(jm_dev.NP,newdata = predict.data.time.7,process = "event",times = seq(7,10, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.7,predSurv.7)
-
-
-
+plot(predMMSE.7,predSurv.7,outcomes=1:2)
 
 
 ```
