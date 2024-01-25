@@ -996,7 +996,7 @@ tvAUC(roc.pic.c.4)
 ```
 
 
-```{r bootstrap for ParkWest}
+```{r actual tAUC for ParkWest}
 
 #-----predictive performance at original data set-----
 
@@ -1012,17 +1012,28 @@ tvAUC(roc.pa.or.1) #0.6096
 tvAUC(roc.pa.or.2) #0.6722
 tvAUC(roc.pa.or.3) #0.6149
 tvAUC(roc.pa.or.4) #0.5953
+```
 
-
-#----Bootstrap dataset----
-
-#use the baseline dataset to create the bootstrap dataset
+```{r Bootstrap ParkWest}
 
 IECV_vbase_PA<-data.baseline.fit.up%>%
   filter(study %in% c("ParkWest"))
 
 IECV_vbase_PA$study<-droplevels(IECV_vbase_PA$study)
 
+#need to add one column id in the baseline and the longitudinal data
+
+IECV_vbase_PA$id<-seq(nrow(IECV_vbase_PA)) 
+
+IECV_vlong_PA<-merge(IECV_vlong_PA,IECV_vbase_PA[,c("idpicc","id")],by="idpicc",all.x = T)
+
+
+table(IECV_vbase_PA$hallucinationsbl) #Only 2 patients have yes in hallucination, idpicc 513/566, id=72, 124
+
+#As only 2 patients had hallucination at baseline and the bootstrap training dataset may all have zero hallucination at baseline. Therefore, for the bootstrap trainning, the Cox regression will without hallucination. Also hallucination was not significant in the model
+
+
+#----Bootstrap dataset----
 n<-dim(IECV_vbase_PA)[1]
 tauc_opt.0<-numeric()
 tauc_opt.1<-numeric()
@@ -1041,8 +1052,8 @@ for (i in 1:100) {
   trainingData <- NULL
   k <- 1
   for (j in 1:length(n_new)){
-    n_len <- length(IECV_vlong_PA$idpicc[IECV_vlong_PA$idpicc %in% n_new[j]])
-    newdata <- IECV_vlong_PA[IECV_vlong_PA$idpicc %in% n_new[j],]
+    n_len <- length(IECV_vlong_PA$id[IECV_vlong_PA$id %in% n_new[j]])
+    newdata <- IECV_vlong_PA[IECV_vlong_PA$id %in% n_new[j],]
     newdata$id <- as.numeric(newdata$id)
     newdata$id <- k
     trainingData <- rbind(trainingData, newdata)
@@ -1052,16 +1063,19 @@ for (i in 1:100) {
   
   # A new model is fitted using the generated sample and including
   # all n patients and all time points.
-  fit1.mmse <- lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc,
+  fit1.mmse <- lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | id,
                         data = trainingData)
-  fit2.mds <- lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=trainingData)
+  
+  fit2.mds <- lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | id, data=trainingData)
   
   Mixed_fit12.PA<-list(fit1.mmse,fit2.mds)
   
-  survFit1 <- coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl, 
+  survFit1 <- coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl, 
                        data = trainingData.id, x = TRUE,model = TRUE)
   
-  jointFit1 <- jm(survFit1,Mixed_objects=Mixed_fit12.PA, time_var = "followupyears")
+  jointFit1 <- jm(survFit1,Mixed_objects=Mixed_fit12.PA, time_var = "followupyears") #I check there is no NA
+  
+  jm(survFit1,fit1.mmse, time_var = "followupyears")
   
   #The predictive measures on the bootstrap data from the model fitted on the bootstrap sample
   
@@ -1089,9 +1103,20 @@ for (i in 1:100) {
 
 
 
+```
+```{r }
+
+tauc_corr<-numeric()
+
+for (i in 1:2) {
+  
+  tauc_corr[i] <- tvAUC(roc.pa.or.0)$auc - tauc_opt.0[i]
+}
+
+tauc_corr
+
 
 ```
-
 
 
 
