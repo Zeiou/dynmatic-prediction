@@ -8,6 +8,7 @@ date: "2024-01-16"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 ```{r IECV outline PICNICS}
 
 #Leave the PICNICS study out as external validation
@@ -700,7 +701,13 @@ IECV_vlong_CPP3$study<-droplevels(IECV_vlong_CPP3$study)
 
 mmse.CPP3<-lme(mmse~study+agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP3)
 
+#Error in lme.formula(mmse ~ study + agebl + sex + yearseducation + cognitivebl +  : 
+#  nlminb problem, convergence error code = 1
+#  message = iteration limit reached without convergence (10)
+
 #The linear mixed model mmse, has covergence problem,even change to just follow-up year still has this problem
+
+#remove follow-up years still cannot convergent
 
 mds.CPP3<-lme(MDSUPDRS3~study+agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_CPP3)
 
@@ -756,27 +763,30 @@ IECV_vlong_PP$study<-droplevels(IECV_vlong_PP$study)
 
 #levels(IECV_vbase_PP$study)
 
-mmse.PP<-lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PP)
+mmse.PP<-lme(mmse~agebl+sex+yearseducation+cognitivebl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PP) #see take rcs out will be better or not
 
 mds.PP<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupyears | idpicc, data=IECV_vlong_PP)
 
 Mixed_PP<-list(mmse.PP,mds.PP) 
 
-Cox_PP<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_PP, x = TRUE,model = TRUE)
+Cox_PP<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl,data=IECV_vbase_PP, x = TRUE,model = TRUE) #take out hallucination to see if it will be better #+hallucinationsbl
+
 #cox.zph(Cox_PP) all pass
 
 #jm_dev.PP<-jm(Cox_PP,Mixed_objects = Mixed_PP,time_var = "followupyears") 
 
 summary(jm_dev.PP)
 
+#If take out rcs(,3), the Rhat in MDS follow-up year will be 1.1 and the tAUC value in CampalGN is not good
+
 #-----validate in CamPalGN----
 
-#IECV_vlong_Cam<-data_long.fit.up.noPIC%>%
-#  filter(study=="CamPalGN")
+#IECV_vlong_Cam<-data_long.fit.up%>%
+#    filter(study=="CamPalGN")
 
 #IECV_vlong_Cam$study<-droplevels(IECV_vlong_Cam$study)
 
-#levels(IECV_vlong_Cam$study)<-c("PICNICS","ParkWest") #Only take NYPUM levels, other levels won't be used
+
 
 roc.Cam.CPP.0<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 0,Dt=3,cores=1L)
 roc.Cam.CPP.1<-tvROC(jm_dev.PP,newdata=IECV_vlong_Cam,Tstart = 1,Dt=3,cores=1L)
@@ -826,8 +836,8 @@ mds.Cam<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupy
 
 Mixed_Cam<-list(mmse.Cam,mds.Cam) 
 
-Cox_Cam<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_Cam, x = TRUE,model = TRUE)
-#cox.zph(Cox_Cam) all pass
+Cox_Cam<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl,data=IECV_vbase_Cam, x = TRUE,model = TRUE)
+#cox.zph(Cox_Cam) all pass #take out +hallucinationsbl
 
 #jm_dev.Cam<-jm(Cox_Cam,Mixed_objects = Mixed_Cam,time_var = "followupyears") 
 
@@ -835,7 +845,7 @@ summary(jm_dev.Cam)
 
 #-----validate in ParkWest----
 
-IECV_vlong_PA<-data_long.fit.up.noPIC%>%
+IECV_vlong_PA<-data_long.fit.up%>%
   filter(study=="ParkWest")
 
 IECV_vlong_PA$study<-droplevels(IECV_vlong_PA$study)
@@ -854,7 +864,6 @@ tvAUC(roc.pa.2)
 tvAUC(roc.pa.3)
 tvAUC(roc.pa.4)
 
-
 png("EV-pa.png",width = 3000,height =2000,res = 400)
 par(mfrow=c(2,3))
 calibration_plot(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 0,Dt=3,plot = TRUE)
@@ -865,6 +874,8 @@ calibration_plot(jm_dev.Cam,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,plot = TRUE)
 dev.off()
 
 ```
+
+
 
 ```{r summary above}
 
@@ -933,7 +944,7 @@ mds.PIC<-lme(MDSUPDRS3~agebl+sex+hybl+rcs(followupyears,3), random = ~ followupy
 
 Mixed_PIC<-list(mmse.PIC,mds.PIC) 
 
-Cox_PIC<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl+hallucinationsbl,data=IECV_vbase_PIC, x = TRUE,model = TRUE)
+Cox_PIC<-coxph(Surv(years,cens)~agebl+sex+hybl+cognitivebl,data=IECV_vbase_PIC, x = TRUE,model = TRUE) #take out +hallucinationsbl
 
 #jm_dev.PIC<-jm(Cox_PIC,Mixed_objects = Mixed_PIC,time_var = "followupyears") 
 
@@ -959,7 +970,7 @@ tvAUC(roc.pa.p.4)
 
 ```
 
-```{r model developement from CamPalGN and PICNICS AND IECV on them}
+```{r model developement from CamPalGN extern validate in PICNICS, develop from PICNICS external validate CamPalGN}
 
 #----Validate in CamPalGN---
 
@@ -996,6 +1007,108 @@ tvAUC(roc.pic.c.4)
 ```
 
 
+```{r CamPalGN and PICNICS gap between revisit}
+
+#----CamPalGN----
+
+table(IECV_vlong_Cam$study,IECV_vlong_Cam$visityear)
+
+#First revisit is at year2, 16 patients
+
+`%!in%` = Negate(`%in%`)
+
+Cam_reyear2idpicc<-IECV_vlong_Cam%>%
+  filter(visityear=="year2")
+
+
+Cam_reyear3idpicc<-IECV_vlong_Cam%>%
+  filter(idpicc!=Cam_reyear2idpicc$idpicc)%>%
+  filter(visityear=="year3")
+
+#First revisit is at year3, 50 patients
+
+
+Cam_reyear4idpicc<-IECV_vlong_Cam%>%
+  filter(idpicc%!in% c(Cam_reyear2idpicc$idpicc,Cam_reyear3idpicc$idpicc))%>%
+  filter(visityear=="year4")
+
+#First revisit is at year4, 35 patients
+
+Cam_reyear5idpicc<-IECV_vlong_Cam%>%
+  filter(idpicc%!in% c(Cam_reyear2idpicc$idpicc,Cam_reyear3idpicc$idpicc,Cam_reyear4idpicc$idpicc))%>%
+  filter(visityear=="year5")
+
+#First revisit is at year 5, 4 patients
+
+IECV_vlong_Cam%>%
+  filter(idpicc%!in% c(Cam_reyear2idpicc$idpicc,Cam_reyear3idpicc$idpicc,Cam_reyear4idpicc$idpicc,Cam_reyear5idpicc$idpicc))%>%
+  filter(visityear=="year6")
+
+#zero patients
+
+#see how many people develop dementia before year 3
+
+IECV_vbase_Cam%>%
+  filter(cens==1)%>%
+  filter(years<5)
+
+#41 event, 25 before year 5
+
+#----PICNICS----
+
+table(IECV_vlong_PIC$study,IECV_vlong_PIC$visityear)
+
+#First revisit is at year1, 25 patients
+
+`%!in%` = Negate(`%in%`)
+
+PIC_reyear1idpicc<-IECV_vlong_PIC%>%
+  filter(visityear=="year1")
+
+
+PIC_reyear2idpicc<-IECV_vlong_PIC%>%
+  filter(idpicc %!in% c(PIC_reyear1idpicc$idpicc))%>%
+  filter(visityear=="year2")
+
+#First revisit is at year2, 131 patients
+
+
+PIC_reyear3idpicc<-IECV_vlong_PIC%>%
+  filter(idpicc%!in% c(PIC_reyear1idpicc$idpicc,PIC_reyear2idpicc$idpicc))%>%
+  filter(visityear=="year3")
+
+#First revisit is at year3, 20 patients
+
+PIC_reyear4idpicc<-IECV_vlong_PIC%>%
+  filter(idpicc%!in% c(PIC_reyear1idpicc$idpicc,PIC_reyear2idpicc$idpicc,PIC_reyear3idpicc))%>%
+  filter(visityear=="year4")
+
+#First revisit is at year4, 11 patients
+
+PIC_reyear5idpicc<-IECV_vlong_PIC%>%
+  filter(idpicc%!in% c(PIC_reyear1idpicc$idpicc,PIC_reyear2idpicc$idpicc,PIC_reyear3idpicc,PIC_reyear4idpicc$idpicc))%>%
+  filter(visityear=="year5")
+
+#First revisit is at year5, 7 patients
+
+IECV_vlong_PIC%>%
+  filter(idpicc%!in% c(PIC_reyear1idpicc$idpicc,PIC_reyear2idpicc$idpicc,PIC_reyear3idpicc,PIC_reyear4idpicc$idpicc,PIC_reyear5idpicc$idpicc))%>%
+  filter(visityear=="year5")
+
+#zero at year 6
+
+#see how many people develop dementia before year 3
+
+IECV_vbase_PIC%>%
+  filter(cens==1)%>%
+  filter(years<3)
+
+#51 event, 32 before year 3
+
+32/51
+
+```
+
 ```{r actual tAUC for ParkWest}
 
 #-----predictive performance at original data set-----
@@ -1006,12 +1119,11 @@ roc.pa.or.2<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 2,Dt=3,cores=1L)
 roc.pa.or.3<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 3,Dt=3,cores=1L)
 roc.pa.or.4<-tvROC(jm_dev.PP,newdata=IECV_vlong_PA,Tstart = 4,Dt=3,cores=1L)
 
-
-tvAUC(roc.pa.or.0) #0.6263
-tvAUC(roc.pa.or.1) #0.6096
-tvAUC(roc.pa.or.2) #0.6722
-tvAUC(roc.pa.or.3) #0.6149
-tvAUC(roc.pa.or.4) #0.5953
+tvAUC(roc.pa.or.0) #0.6302
+tvAUC(roc.pa.or.1) #0.6475
+tvAUC(roc.pa.or.2) #0.7176
+tvAUC(roc.pa.or.3) #0.6844
+tvAUC(roc.pa.or.4) #0.6356
 ```
 
 ```{r Bootstrap ParkWest}
@@ -1045,7 +1157,7 @@ for (i in 1:100) {
   print(i)
   # A sample of size n is generated with replacement from the original data set, 
   # where patients are drawn by identification number.
-  set.seed(2020 + i)
+  set.seed(2024 + i)
   n_new <- sample(1:n, n, replace=TRUE)
   n_new <- sort(n_new, decreasing = FALSE)
   
@@ -1104,21 +1216,53 @@ for (i in 1:100) {
 
 
 ```
-```{r }
 
-tauc_corr<-numeric()
 
-for (i in 1:2) {
+```{r bootstrap AUC}
+
+tauc_corr.0<-numeric()
+tauc_corr.1<-numeric()
+tauc_corr.2<-numeric()
+tauc_corr.3<-numeric()
+tauc_corr.4<-numeric()
+
+for (i in 1:14) {
   
-  tauc_corr[i] <- tvAUC(roc.pa.or.0)$auc - tauc_opt.0[i]
+  tauc_corr.0[i] <- tvAUC(roc.pa.or.0)$auc - tauc_opt.0[i]
+  tauc_corr.1[i] <- tvAUC(roc.pa.or.1)$auc - tauc_opt.1[i]
+  tauc_corr.2[i] <- tvAUC(roc.pa.or.2)$auc - tauc_opt.2[i]
+  tauc_corr.3[i] <- tvAUC(roc.pa.or.3)$auc - tauc_opt.3[i]
+  tauc_corr.4[i] <- tvAUC(roc.pa.or.4)$auc - tauc_opt.4[i]
 }
 
-tauc_corr
+mean(tauc_corr.0,na.rm = T)
+mean(tauc_corr.1,na.rm = T)
+mean(tauc_corr.2,na.rm = T)
+mean(tauc_corr.3,na.rm = T)
+mean(tauc_corr.4,na.rm = T)
+
+
+tauc_corr.0
+tauc_corr.1
+tauc_corr.2
+tauc_corr.3
+tauc_corr.4
 
 
 ```
 
+```{r see how many event in each year}
 
+IECV_vbase_Cam%>%
+  filter(cens==1)%>%
+  filter(years<10)
+
+
+IECV_vbase_PIN%>%
+  filter(cens==1)%>%
+  filter(years<10)
+
+```
 
 ```{r predict individal in NYPUM}
 
