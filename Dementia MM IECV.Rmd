@@ -1109,7 +1109,7 @@ IECV_vbase_PIC%>%
 
 ```
 
-```{r actual tAUC for ParkWest}
+```{r actual tAUC and calibration plot for ParkWest}
 
 #-----predictive performance at original data set-----
 
@@ -1124,6 +1124,17 @@ tvAUC(roc.pa.or.1) #0.6475
 tvAUC(roc.pa.or.2) #0.7176
 tvAUC(roc.pa.or.3) #0.6844
 tvAUC(roc.pa.or.4) #0.6356
+
+#----calibration plot---
+
+png("ParkWest.actual.calibration.png",width = 3000,height =2000,res = 400)
+par(mfrow=c(2,3))
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PA,Tstart = 0,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PA,Tstart = 1,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PA,Tstart = 2,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PA,Tstart = 3,Dt=3,plot = TRUE)
+calibration_plot(jm_dev.PP,newdata = IECV_vlong_PA,Tstart = 4,Dt=3,plot = TRUE)
+dev.off()
 ```
 
 ```{r Bootstrap ParkWest}
@@ -1226,7 +1237,7 @@ tauc_corr.2<-numeric()
 tauc_corr.3<-numeric()
 tauc_corr.4<-numeric()
 
-for (i in 1:14) {
+for (i in 1:100) {
   
   tauc_corr.0[i] <- tvAUC(roc.pa.or.0)$auc - tauc_opt.0[i]
   tauc_corr.1[i] <- tvAUC(roc.pa.or.1)$auc - tauc_opt.1[i]
@@ -1264,17 +1275,23 @@ IECV_vbase_PIN%>%
 
 ```
 
-```{r predict individal in NYPUM}
+```{r predict individual in NYPUM}
 
 #JM model is jm_dev.NP
 
 IECV_vlong_NY%>%
   filter(cens==1)%>%
-  filter(followupyears>3)
+  filter(years<6)%>%
+  filter(years>3)%>%
+  filter(mmse<28)%>%
+  filter(MDSUPDRS3>40)
 
-#random select idpicc==351
 
-predict.data<-IECV_vlong_NY[IECV_vlong_NY$idpicc == 351,] #event at 8.5 years
+
+#random select idpicc==378 is kind of ok
+
+
+predict.data<-IECV_vlong_NY[IECV_vlong_NY$idpicc == 378,] #event at 3.5 years
 
 levels(predict.data$study)<-c("NYPUM","PINE") #it will only take NYPUM level
 
@@ -1286,11 +1303,107 @@ predict.data.time.0$cens<-0 #not event
 
 predict.data.time.0$years<-0 #predict time at 0 years
 
-predMMSE.0<-predict(jm_dev.NP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+predLong.0<-predict(jm_dev.NP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
 
 predSurv.0<-predict(jm_dev.NP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.0,predSurv.0,outcomes=1:2)
+plot(predLong.0,predSurv.0,outcomes=1:2)
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<1.1,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1.03 
+
+predLong.1<-predict(jm_dev.NP,newdata = predict.data.time.1,times = seq(1.03,4.03, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jm_dev.NP,newdata = predict.data.time.1,process = "event",times = seq(1.03,4.03, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.1,predSurv.1,outcomes=1:2)
+
+#-----From baseline up to 2 year-----
+
+predict.data.time.2<-predict.data[predict.data$followupyears<2.1,] 
+
+predict.data.time.2$cens<-0 #not event
+
+predict.data.time.2$years<-2
+
+predLong.2<-predict(jm_dev.NP,newdata = predict.data.time.2,times = seq(2,5.07, length.out=20),return_newdata = T) #for future time point
+
+predSurv.2<-predict(jm_dev.NP,newdata = predict.data.time.2,process = "event",times = seq(2,5.07, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.2,predSurv.2,outcomes=1:2)
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<3.1,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3.1 
+
+#predict for longitudinal outcomes
+
+predLong.3<-predict(jm_dev.NP,newdata = predict.data.time.3,times = seq(3.1,6.1, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jm_dev.NP,newdata = predict.data.time.3,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.3,predSurv.3,outcomes=1:2)
+
+#----Arrange plot----
+
+png("JMpred0.NYPUM.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.0,predSurv.0,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred1.NYPUM.png",width = 3500,height =2000,res = 400)
+plot(predLong.1,predSurv.1,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred2.NYPUM.png",width = 3500,height =2000,res = 400)
+plot(predLong.2,predSurv.2,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+png("JMpred3.NYPUM.png",width = 3500,height =2000,res = 400)
+plot(predLong.3,predSurv.3,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+dev.off()
+
+```
+
+
+```{r predict individual in PINE}
+
+IECV_vlong_PIN%>%
+  filter(cens==1)%>%
+  filter(years>6)%>%
+  filter(mmse<28)%>%
+  filter(MDSUPDRS3>40)
+
+#random select idpicc==1168 is kind of ok
+
+predict.data<-IECV_vlong_PIN[IECV_vlong_PIN$idpicc == 1168,] #event at 9 years
+
+levels(predict.data$study)<-c("PINE","NYPUM") #it will only take PINE level
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jm_dev.NP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jm_dev.NP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.0,predSurv.0,outcomes=1:2)
 
 #-----From baseline up to 1 year-----
 
@@ -1300,12 +1413,12 @@ predict.data.time.1$cens<-0 #not event
 
 predict.data.time.1$years<-1.02 
 
-predMMSE.1<-predict(jm_dev.NP,newdata = predict.data.time.1,times = seq(1.02,4, length.out=20),return_newdata = T) #for future time point
+predLong.1<-predict(jm_dev.NP,newdata = predict.data.time.1,times = seq(1.02,4.03, length.out=20),return_newdata = T) #for future time point
 
-predSurv.1<-predict(jm_dev.NP,newdata = predict.data.time.1,process = "event",times = seq(1.02,4, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.1<-predict(jm_dev.NP,newdata = predict.data.time.1,process = "event",times = seq(1.02,4.03, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
 
-plot(predMMSE.1,predSurv.1,outcomes=1:2)
+plot(predLong.1,predSurv.1,outcomes=1:2)
 
 #-----From baseline up to 2 year-----
 
@@ -1313,17 +1426,17 @@ predict.data.time.2<-predict.data[predict.data$followupyears<2.1,]
 
 predict.data.time.2$cens<-0 #not event
 
-predict.data.time.2$years<-2.07
+predict.data.time.2$years<-2
 
-predMMSE.2<-predict(jm_dev.NP,newdata = predict.data.time.2,times = seq(2.07,5, length.out=20),return_newdata = T) #for future time point
+predLong.2<-predict(jm_dev.NP,newdata = predict.data.time.2,times = seq(2,5, length.out=20),return_newdata = T) #for future time point
 
-predSurv.2<-predict(jm_dev.NP,newdata = predict.data.time.2,process = "event",times = seq(2.07,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.2<-predict(jm_dev.NP,newdata = predict.data.time.2,process = "event",times = seq(2,5, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.2,predSurv.2,outcomes=1:2)
+plot(predLong.2,predSurv.2,outcomes=1:2)
 
 #------From baseline up to 3 years-----
 
-predict.data.time.3<-predict.data[predict.data$followupyears<3,] 
+predict.data.time.3<-predict.data[predict.data$followupyears<3.1,] 
 
 predict.data.time.3$cens<-0 #not event
 
@@ -1331,32 +1444,337 @@ predict.data.time.3$years<-3
 
 #predict for longitudinal outcomes
 
-predMMSE.3<-predict(jm_dev.NP,newdata = predict.data.time.3,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
+predLong.3<-predict(jm_dev.NP,newdata = predict.data.time.3,times = seq(3,6, length.out=20),return_newdata = T) #for future time point
 
 predSurv.3<-predict(jm_dev.NP,newdata = predict.data.time.3,process = "event",times = seq(3,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.3,predSurv.3,outcomes=1:2)
+plot(predLong.3,predSurv.3,outcomes=1:2)
 
 #------From baseline up to 4 years-----
 
-predict.data.time.4<-predict.data[predict.data$followupyears<4,] 
+predict.data.time.4<-predict.data[predict.data$followupyears<4.1,] 
 
 predict.data.time.4$cens<-0 #not event
 
-predict.data.time.4$years<-4
+predict.data.time.4$years<-4.02 
 
 #predict for longitudinal outcomes
 
-predMMSE.4<-predict(jm_dev.NP,newdata = predict.data.time.4,times = seq(4,7, length.out=20),return_newdata = T) #for future time point
+predLong.4<-predict(jm_dev.NP,newdata = predict.data.time.4,times = seq(4.02,7.02, length.out=20),return_newdata = T) #for future time point
 
-predSurv.4<-predict(jm_dev.NP,newdata = predict.data.time.4,process = "event",times = seq(4,7, length.out=20),return_newdata = T) # use the information before 3 years to predict
+predSurv.4<-predict(jm_dev.NP,newdata = predict.data.time.4,process = "event",times = seq(4.02,7.02, length.out=20),return_newdata = T) # use the information before 3 years to predict
 
-plot(predMMSE.4,predSurv.4,outcomes=1:2)
+plot(predLong.4,predSurv.4,outcomes=1:2)
+
+
+#------From baseline up to 5 years-----
+
+predict.data.time.5<-predict.data[predict.data$followupyears<5.1,] 
+
+predict.data.time.5$cens<-0 #not event
+
+predict.data.time.5$years<-5
+
+#predict for longitudinal outcomes
+
+predLong.5<-predict(jm_dev.NP,newdata = predict.data.time.5,times = seq(5.01,8, length.out=20),return_newdata = T) #for future time point
+
+predSurv.5<-predict(jm_dev.NP,newdata = predict.data.time.5,process = "event",times = seq(5.01,8, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.5,predSurv.5,outcomes=1:2)
+
+#------From baseline up to 6 years-----
+
+predict.data.time.6<-predict.data[predict.data$followupyears<6,] 
+
+predict.data.time.6$cens<-0 #not event
+
+predict.data.time.6$years<-6
+
+#predict for longitudinal outcomes
+
+predLong.6<-predict(jm_dev.NP,newdata = predict.data.time.6,times = seq(6,9, length.out=20),return_newdata = T) #for future time point
+
+predSurv.6<-predict(jm_dev.NP,newdata = predict.data.time.6,process = "event",times = seq(6,9, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.6,predSurv.6,outcomes=1:2)
+
+#----Arrange plot----
+
+png("JMpred0.PINE.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.0,predSurv.0,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred1.PINE.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.1,predSurv.1,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred2.PINE.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.2,predSurv.2,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred3.PINE.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.3,predSurv.3,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred4.PINE.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.4,predSurv.4,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred5.PINE.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.5,predSurv.5,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred6.PINE.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.6,predSurv.6,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
 
 ```
 
 
-```{r idpicc is 323 NYPUM}
+```{r predict individual in CamPalGN}
+
+IECV_vlong_Cam%>%
+  filter(cens==1)%>%
+  filter(years<6)%>%
+  filter(mmse<28)%>%
+  filter(MDSUPDRS3>40)
+
+#random select idpicc==38 is ok
+
+predict.data<-IECV_vlong_Cam[IECV_vlong_Cam$idpicc == 38,] #event at 4.7 years
+
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jm_dev.PP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jm_dev.PP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.0,predSurv.0,outcomes=1:2)
+
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<3,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-2.8 
+
+#predict for longitudinal outcomes
+
+predLong.3<-predict(jm_dev.PP,newdata = predict.data.time.3,times = seq(2.8,6, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jm_dev.PP,newdata = predict.data.time.3,process = "event",times = seq(2.8,6, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.3,predSurv.3,outcomes=1:2)
+
+
+#------From baseline up to 4 years-----
+
+predict.data.time.4<-predict.data[predict.data$followupyears<4.2,] 
+
+predict.data.time.4$cens<-0 #not event
+
+predict.data.time.4$years<-4.2 
+
+#predict for longitudinal outcomes
+
+predLong.4<-predict(jm_dev.PP,newdata = predict.data.time.4,times = seq(4.2,7.2, length.out=20),return_newdata = T) #for future time point
+
+predSurv.4<-predict(jm_dev.PP,newdata = predict.data.time.4,process = "event",times = seq(4.2,7.2, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.4,predSurv.4,outcomes=1:2)
+
+
+#----Arrange plot----
+
+png("JMpred0.CamPalGN.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.0,predSurv.0,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+
+png("JMpred3.CamPalGN.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.3,predSurv.3,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+
+png("JMpred4.CamPalGN.png",width = 3500,height =2500,res = 400)
+
+plot(predLong.4,predSurv.4,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+```
+
+
+```{r predict individual in PICNICS}
+
+IECV_vlong_PIC%>%
+  filter(cens==1)%>%
+  filter(years<4)%>%
+  filter(mmse<28)%>%
+  filter(MDSUPDRS3>35)
+
+#random select idpicc==645 is kind of ok
+
+predict.data<-IECV_vlong_PIC[IECV_vlong_PIC$idpicc == 645,] #event at 3.3 years
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jm_dev.PP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jm_dev.PP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.0,predSurv.0,outcomes=1:2)
+
+#-----From baseline up to 1.62 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1.62
+
+predLong.1<-predict(jm_dev.PP,newdata = predict.data.time.1,times = seq(1.62,4.62, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jm_dev.PP,newdata = predict.data.time.1,process = "event",times = seq(1.62,4.62, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.1,predSurv.1,outcomes=1:2)
+
+#----Arrange plot----
+
+png("JMpred0.PICNICS.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.0,predSurv.0,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+
+png("JMpred1.PICNICS.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.1,predSurv.1,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+```
+
+```{r predict individual in ParkWest}
+
+IECV_vlong_PA%>%
+  filter(cens==1)%>%
+  filter(years<6)%>%
+  filter(mmse<28)%>%
+  filter(MDSUPDRS3>35)
+
+#random select idpicc==645 is kind of ok
+
+predict.data<-IECV_vlong_PA[IECV_vlong_PA$idpicc == 499,] #event at 4.3 years
+
+
+#----Only baseline information-----
+
+predict.data.time.0<-predict.data[predict.data$followupyears==0,] 
+
+predict.data.time.0$cens<-0 #not event
+
+predict.data.time.0$years<-0 #predict time at 0 years
+
+predLong.0<-predict(jm_dev.PP,newdata = predict.data.time.0,times = seq(0,3, length.out=20),return_newdata = T) #for future time point
+
+predSurv.0<-predict(jm_dev.PP,newdata = predict.data.time.0,process = "event",times = seq(0,3, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.0,predSurv.0,outcomes=1:2)
+
+#-----From baseline up to 1 year-----
+
+predict.data.time.1<-predict.data[predict.data$followupyears<2,] 
+
+predict.data.time.1$cens<-0 #not event
+
+predict.data.time.1$years<-1.03
+
+predLong.1<-predict(jm_dev.PP,newdata = predict.data.time.1,times = seq(1.03,4.03, length.out=20),return_newdata = T) #for future time point
+
+predSurv.1<-predict(jm_dev.PP,newdata = predict.data.time.1,process = "event",times = seq(1.03,4.03, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+
+plot(predLong.1,predSurv.1,outcomes=1:2)
+
+#------From baseline up to 3 years-----
+
+predict.data.time.3<-predict.data[predict.data$followupyears<3.5,] 
+
+predict.data.time.3$cens<-0 #not event
+
+predict.data.time.3$years<-3.04
+
+#predict for longitudinal outcomes
+
+predLong.3<-predict(jm_dev.PP,newdata = predict.data.time.3,times = seq(3.04,6.4, length.out=20),return_newdata = T) #for future time point
+
+predSurv.3<-predict(jm_dev.PP,newdata = predict.data.time.3,process = "event",times = seq(3.04,6.04, length.out=20),return_newdata = T) # use the information before 3 years to predict
+
+plot(predLong.3,predSurv.3,outcomes=1:2)
+
+#----Arrange plot----
+
+png("JMpred0.ParkWest.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.0,predSurv.0,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+
+png("JMpred1.ParkWest.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.1,predSurv.1,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+png("JMpred2.ParkWest.png",width = 3500,height =2000,res = 400)
+
+plot(predLong.2,predSurv.2,outcomes=1:2,ylab_long = c(" "," "),ylab_event = "Cumulative risk of dementia",xlab = "Follow-up years",cex_ylab_long = 1.5,cex_axis = 1.2,cex_xlab = 1)
+
+dev.off()
+
+```
+
+
+
+```{r NOT RUN idpicc is 323 NYPUM}
 
 
 predict.data<-IECV_vlong_NY[IECV_vlong_NY$idpicc == 323,] #event at 7.5 years
